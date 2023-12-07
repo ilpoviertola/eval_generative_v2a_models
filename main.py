@@ -2,6 +2,7 @@
 from omegaconf import OmegaConf, DictConfig
 
 from metrics.fad import calculate_fad
+from metrics.kld import calculate_kld
 
 
 def get_cfg() -> DictConfig:
@@ -22,6 +23,8 @@ def main(cfg: DictConfig):
     """Run the application."""
     if cfg.metric == "fad":
         calculate_fad(cfg)
+    elif cfg.metric == "kld":
+        calculate_kld(cfg)
 
 
 if __name__ == "__main__":

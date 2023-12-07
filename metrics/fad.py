@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from omegaconf import DictConfig
 from frechet_audio_distance import FrechetAudioDistance
@@ -37,4 +38,7 @@ def calculate_fad(cfg: DictConfig):
         if eval_was_resampled:
             rmdir_and_contents(resampled_eval_dir)
 
-    print(score)
+    with open(cfg.background_dir, "w") as f:
+        json.dump({"FAD": score}, f, indent=4)
+
+    print("FAD:", score)
