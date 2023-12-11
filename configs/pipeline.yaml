@@ -1,0 +1,24 @@
+audio_samples: ?
+audio_gts: ?
+
+pipeline:
+  - metric: fad
+    params:
+      model_name: vggish
+      sample_rate: 16000
+      use_pca: false
+      use_activation: false
+      verbose: false
+      background_dir: ${audio_samples}
+      eval_dir: ${audio_gts}
+      background_embds_path: null
+      eval_embds_path: null
+      dtype: float32
+  - metric: kld
+    params:
+      pretrained_length: 10 # 10 | 20 | 30
+      audio_samples: ${audio_samples}
+      audio_gts: ${audio_gts}
+      batch_size: 10
+      num_workers: 10
+      duration: 2.0

@@ -1,0 +1,10 @@
+pipeline:
+  - metric: xcorr
+    params:
+      gt_audio_dir: ?
+      gen_audio_dir: ?
+      sample_rate: 24000
+      duration: 2.0
+      delete_resampled_dirs: true
+      batch_size: 10
+      num_workers: 10

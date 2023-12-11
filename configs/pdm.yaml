@@ -1,0 +1,10 @@
+pipeline:
+  - metric: pdm
+    params:
+      gt_audio_dir: ?
+      gen_audio_dir: ?
+      sample_rate: 24000
+      delete_resampled_dirs: true
+      duration: 2.0
+      batch_size: 10
+      num_workers: 10

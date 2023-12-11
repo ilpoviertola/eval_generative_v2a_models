@@ -30,6 +30,7 @@ env2/
 *.pyc
 
 # Logs
+logs/
 *.log
 
 # OS generated files

@@ -1,12 +1,13 @@
-metric: fad
-model_name: vggish
-sample_rate: 16000
-use_pca: false
-use_activation: false
-verbose: false
-
-background_dir: ?
-eval_dir: ?
-background_embds_path: null
-eval_embds_path: null
-dtype: float32
+pipeline:
+  - metric: fad
+    params:
+      model_name: vggish
+      sample_rate: 16000
+      use_pca: false
+      use_activation: false
+      verbose: false
+      background_dir: ?
+      eval_dir: ?
+      background_embds_path: null
+      eval_embds_path: null
+      dtype: float32

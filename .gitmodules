@@ -1,0 +1,3 @@
+[submodule "submodules/SparseSync"]
+	path = submodules/SparseSync
+	url = git@github.com:v-iashin/SparseSync.git

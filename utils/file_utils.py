@@ -1,12 +1,29 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
+import numpy as np
 import julius
 import torch
 from tqdm import tqdm
+from audiotools import Meter
 
 from torchaudio import load, save
 from torchaudio.transforms import Resample
+
+
+class AudioLoudnessNormalize(torch.nn.Module):
+    GAIN_FACTOR = np.log(10) / 20
+
+    def __init__(self, target_loudness: float = 0.0, sr: int = 24000) -> None:
+        super().__init__()
+        self.target_loudness = target_loudness
+        self.meter = Meter(sr)
+
+    def forward(self, wav: torch.Tensor):
+        loudness = self.meter.integrated_loudness(wav.permute(0, 2, 1))
+        gain = self.target_loudness - loudness
+        gain = torch.exp(gain * self.GAIN_FACTOR)
+        return wav * gain[:, None, None]
 
 
 def convert_audio_channels(wav: torch.Tensor, channels: int = 2) -> torch.Tensor:

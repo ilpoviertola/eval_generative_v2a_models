@@ -65,4 +65,5 @@ class AudioDataset(Dataset):
             "gt_audio": gt_audio,
             "sample_audio_sr": sample_audio_sr,
             "gt_audio_sr": gt_audio_sr,
+            "filename": sample.name,
         }

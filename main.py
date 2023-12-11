@@ -3,6 +3,9 @@ from omegaconf import OmegaConf, DictConfig
 
 from metrics.fad import calculate_fad
 from metrics.kld import calculate_kld
+from metrics.pdm import calculate_pdm
+from metrics.xcorr import calculate_xcorr
+from metrics.latency import calculate_latency
 
 
 def get_cfg() -> DictConfig:
@@ -19,12 +22,19 @@ def get_cfg() -> DictConfig:
     return cfg
 
 
-def main(cfg: DictConfig):
+def main(pipeline: DictConfig):
     """Run the application."""
-    if cfg.metric == "fad":
-        calculate_fad(cfg)
-    elif cfg.metric == "kld":
-        calculate_kld(cfg)
+    for cfg in pipeline.pipeline:
+        if cfg.metric == "fad":
+            calculate_fad(cfg.params)
+        elif cfg.metric == "kld":
+            calculate_kld(cfg.params)
+        elif cfg.metric == "pdm":
+            calculate_pdm(cfg.params)
+        elif cfg.metric == "xcorr":
+            calculate_xcorr(cfg.params)
+        elif cfg.metric == "latency":
+            calculate_latency(cfg.params)
 
 
 if __name__ == "__main__":

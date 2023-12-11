@@ -261,7 +261,9 @@ def calculate_kld(cfg: DictConfig):
         audio_gts_dir=Path(cfg.audio_gts),
         duration=cfg.duration,
     )
-    loader = DataLoader(dataset, batch_size=cfg.batch_size, num_workers=cfg.num_workers)
+    loader = DataLoader(
+        dataset, batch_size=cfg.batch_size, num_workers=cfg.num_workers, shuffle=False
+    )
     for batch in loader:
         kld_metric(
             batch["sample_audio"],
