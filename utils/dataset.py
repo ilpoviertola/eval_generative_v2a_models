@@ -25,23 +25,23 @@ class AudioDataset(Dataset):
 
         audio_samples = list(audio_samples_dir.glob("*.wav"))
         audio_gts = list(audio_gts_dir.glob("*.wav"))
-        assert len(audio_samples) == len(
+        assert len(audio_samples) <= len(
             audio_gts
-        ), "Must have same number of samples and ground truths."
+        ), "Must have same number of samples or less than ground truths."
 
         self.audio_samples = sorted(audio_samples, key=lambda p: p.name)
-        self.audio_gts = sorted(audio_gts, key=lambda p: p.name)
+        self.audio_gts_dir = Path(audio_gts_dir)
         self.duration = duration
 
     def __len__(self):
         """Return length of dataset."""
-        return len(self.audio_gts)
+        return len(self.audio_samples)
 
     def __getitem__(self, idx):
         """Return item at index idx."""
         sample = self.audio_samples[idx]
-        gt = self.audio_gts[idx]
-        assert sample.stem == gt.stem, "Sample and ground truth must have same name."
+        gt: Path = self.audio_gts_dir / sample.name
+        assert gt.exists(), "Ground truth audio file does not exist."
 
         sample_audio, sample_audio_sr = load(sample)
         gt_audio, gt_audio_sr = load(gt)

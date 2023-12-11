@@ -30,6 +30,12 @@ def main(pipeline: DictConfig):
     """Run the application."""
     timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     all_scores = []
+    all_scores.append(
+        {
+            "sample_dir": pipeline.get("samples", "?"),
+            "gt_dir": pipeline.get("audio_gts", "?"),
+        }
+    )
     for cfg in pipeline.pipeline:
         if cfg.metric == "fad":
             score_item = calculate_fad(cfg.params)
