@@ -1,3 +1,4 @@
+from typing import Dict
 from pathlib import Path
 import json
 
@@ -41,7 +42,7 @@ def calculate_latency(cfg: DictConfig):
     model.eval()
     transforms = get_transforms(model_cfg)["test"]
 
-    results = {"LATENCY": {}}
+    results: Dict[str, Dict[str, float]] = {"LATENCY": {}}
     for vid_path in generated_videos_path.glob("*.mp4"):
         # checking if the provided video has the correct frame rates
         vid_path = vid_path.as_posix()
@@ -106,7 +107,7 @@ def calculate_latency(cfg: DictConfig):
         # simply prints the results of the prediction
         top_prob, top_class = decode_single_video_prediction(off_logits, grid, item)
 
-        results["LATENCY"][vid_path] = {"class": top_class, "prob": top_prob}
+        results["LATENCY"][vid_path.as_posix()] = {"class": top_class, "prob": top_prob}
 
     with open(Path(cfg.generated_videos) / "latency.json", "w") as f:
         json.dump(results, f)
