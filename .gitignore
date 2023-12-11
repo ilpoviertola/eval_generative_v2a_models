@@ -32,6 +32,7 @@ env2/
 # Logs
 logs/
 *.log
+vis/
 
 # OS generated files
 .DS_Store

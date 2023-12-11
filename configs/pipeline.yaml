@@ -1,5 +1,8 @@
-audio_samples: ?
-audio_gts: ?
+save_individual_metrics: false
+score_save_path: ./  # path to save the scores
+verbose: false
+samples: /home/hdd/data/greatesthits/evaluation/generated_files_debug  # must be a directory with .wav and .mp4 files
+audio_gts: /home/hdd/data/greatesthits/evaluation/gt_evaluation_files_debug  # must be a directory with .wav files
 
 pipeline:
   - metric: fad
@@ -8,17 +11,41 @@ pipeline:
       sample_rate: 16000
       use_pca: false
       use_activation: false
-      verbose: false
-      background_dir: ${audio_samples}
-      eval_dir: ${audio_gts}
+      samples: ${samples}
+      gts: ${audio_gts}
       background_embds_path: null
       eval_embds_path: null
       dtype: float32
+      save: ${save_individual_metrics}
+      verbose: ${verbose}
   - metric: kld
     params:
       pretrained_length: 10 # 10 | 20 | 30
-      audio_samples: ${audio_samples}
-      audio_gts: ${audio_gts}
+      samples: ${samples}
+      gts: ${audio_gts}
       batch_size: 10
       num_workers: 10
       duration: 2.0
+      save: ${save_individual_metrics}
+      verbose: ${verbose}
+  - metric: xcorr
+    params:
+      gts: ${audio_gts}
+      samples: ${samples}
+      sample_rate: 24000
+      duration: 2.0
+      delete_resampled_dirs: true
+      batch_size: 10
+      num_workers: 10
+      save: ${save_individual_metrics}
+      verbose: ${verbose}
+  - metric: latency
+    params:
+      exp_name: 22-09-21T21-00-52
+      samples: ${samples}
+      vfps: 25
+      afps: 16000
+      input_size: 224
+      device: cuda:0
+      save: ${save_individual_metrics}
+      verbose: ${verbose}

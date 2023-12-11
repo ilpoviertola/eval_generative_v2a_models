@@ -1,4 +1,8 @@
 """Main gateway to the application."""
+import json
+from pathlib import Path
+from datetime import datetime
+
 from omegaconf import OmegaConf, DictConfig
 
 from metrics.fad import calculate_fad
@@ -24,17 +28,30 @@ def get_cfg() -> DictConfig:
 
 def main(pipeline: DictConfig):
     """Run the application."""
+    timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    all_scores = []
     for cfg in pipeline.pipeline:
         if cfg.metric == "fad":
-            calculate_fad(cfg.params)
+            score_item = calculate_fad(cfg.params)
         elif cfg.metric == "kld":
-            calculate_kld(cfg.params)
+            score_item = calculate_kld(cfg.params)
         elif cfg.metric == "pdm":
-            calculate_pdm(cfg.params)
+            score_item = calculate_pdm(cfg.params)
         elif cfg.metric == "xcorr":
-            calculate_xcorr(cfg.params)
+            score_item = calculate_xcorr(cfg.params)
         elif cfg.metric == "latency":
-            calculate_latency(cfg.params)
+            score_item = calculate_latency(cfg.params)
+        else:
+            raise ValueError(f"Unknown metric: {cfg.metric}")
+
+        all_scores.append(score_item)
+
+    print(all_scores)
+
+    save_path = Path(pipeline.get("score_save_path", "./")) / f"scores_{timestamp}.json"
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(save_path, "w") as f:
+        json.dump(all_scores, f, indent=4)
 
 
 if __name__ == "__main__":

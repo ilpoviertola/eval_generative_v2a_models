@@ -8,7 +8,7 @@ import torch
 
 from submodules.SparseSync.utils.utils import check_if_file_exists_else_download
 from submodules.SparseSync.dataset.dataset_utils import get_video_and_audio
-from submodules.SparseSync.dataset.transforms import make_class_grid, quantize_offset
+from submodules.SparseSync.dataset.transforms import make_class_grid
 from submodules.SparseSync.scripts.example import (
     reencode_video,
     decode_single_video_prediction,
@@ -20,7 +20,8 @@ from submodules.SparseSync.scripts.train_utils import (
 )
 
 
-def calculate_latency(cfg: DictConfig):
+def calculate_latency(cfg: DictConfig) -> Dict[str, Dict[str, float]]:
+    verbose = cfg.get("verbose", False)
     cfg_path = f"./logs/sync_models/{cfg.exp_name}/cfg-{cfg.exp_name}.yaml"
     ckpt_path = f"./logs/sync_models/{cfg.exp_name}/{cfg.exp_name}.pt"
 
@@ -30,7 +31,7 @@ def calculate_latency(cfg: DictConfig):
 
     # load config
     model_cfg = OmegaConf.load(cfg_path)
-    generated_videos_path = Path(cfg.generated_videos)
+    generated_videos_path = Path(cfg.samples)
 
     device = torch.device(cfg.device)
 
@@ -45,34 +46,41 @@ def calculate_latency(cfg: DictConfig):
     results: Dict[str, Dict[str, float]] = {"LATENCY": {}}
     for vid_path in generated_videos_path.glob("*.mp4"):
         # checking if the provided video has the correct frame rates
-        vid_path = vid_path.as_posix()
-        print(f"Using video: {vid_path}")
-        v, a, vid_meta = torchvision.io.read_video(vid_path, pts_unit="sec")
+        vid_path_str = vid_path.as_posix()
+        if verbose:
+            print(f"Using video: {vid_path_str}")
+        v, a, vid_meta = torchvision.io.read_video(vid_path_str, pts_unit="sec")
         T, H, W, C = v.shape
         if (
             vid_meta["video_fps"] != cfg.vfps
             or vid_meta["audio_fps"] != cfg.afps
             or min(H, W) != cfg.input_size
         ):
-            print(f'Reencoding. vfps: {vid_meta["video_fps"]} -> {cfg.vfps};', end=" ")
-            print(f'afps: {vid_meta["audio_fps"]} -> {cfg.afps};', end=" ")
-            print(f"{(H, W)} -> min(H, W)={cfg.input_size}")
-            vid_path = reencode_video(vid_path, cfg.vfps, cfg.afps, cfg.input_size)
-        else:
-            print(
-                f'No need to reencode. vfps: {vid_meta["video_fps"]}; afps: {vid_meta["audio_fps"]}; min(H, W)={cfg.input_size}'
+            if verbose:
+                print(
+                    f'Reencoding. vfps: {vid_meta["video_fps"]} -> {cfg.vfps};', end=" "
+                )
+                print(f'afps: {vid_meta["audio_fps"]} -> {cfg.afps};', end=" ")
+                print(f"{(H, W)} -> min(H, W)={cfg.input_size}")
+            vid_path_str = reencode_video(
+                vid_path_str, cfg.vfps, cfg.afps, cfg.input_size
             )
+        else:
+            if verbose:
+                print(
+                    f'No need to reencode. vfps: {vid_meta["video_fps"]}; afps: {vid_meta["audio_fps"]}; min(H, W)={cfg.input_size}'
+                )
 
         # load visual and audio streams
         # (Tv, 3, H, W) in [0, 255], (Ta, C) in [-1, 1]
-        rgb, audio, meta = get_video_and_audio(vid_path, get_meta=True)
+        rgb, audio, meta = get_video_and_audio(vid_path_str, get_meta=True)
         rgb = rgb.repeat(3, 1, 1, 1)[:125, ...]
         audio = audio.repeat(3)[:80000, ...]
         item = {
             "video": rgb,
             "audio": audio,
             "meta": meta,
-            "path": vid_path,
+            "path": vid_path_str,
             "split": "test",
             "targets": {
                 # setting the start of the visual crop and the offset size.
@@ -107,9 +115,10 @@ def calculate_latency(cfg: DictConfig):
         # simply prints the results of the prediction
         top_prob, top_class = decode_single_video_prediction(off_logits, grid, item)
 
-        results["LATENCY"][vid_path.as_posix()] = {"class": top_class, "prob": top_prob}
+        results["LATENCY"][vid_path_str] = {"class": top_class, "prob": top_prob}
 
-    with open(Path(cfg.generated_videos) / "latency.json", "w") as f:
-        json.dump(results, f)
+    if cfg.get("save", False):
+        with open(Path(cfg.samples) / "latency.json", "w") as f:
+            json.dump(results, f)
 
     return results

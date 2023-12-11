@@ -1,4 +1,5 @@
 # Cross correlation between original and generated signals
+from typing import Dict
 from pathlib import Path
 import json
 
@@ -31,10 +32,10 @@ def xcorr(x, y):
     return lags, corr
 
 
-def calculate_xcorr(cfg: DictConfig):
+def calculate_xcorr(cfg: DictConfig) -> Dict[str, float]:
     """Calculate the Cross-Correlation Metric (XCorr)."""
-    gt_audio_dir = Path(cfg.gt_audio_dir)
-    gen_audio_dir = Path(cfg.gen_audio_dir)
+    gt_audio_dir = Path(cfg.gts)
+    gen_audio_dir = Path(cfg.samples)
 
     gt_audio_dir_resampled, resampled_gt = resample_dir_if_needed(
         gt_audio_dir, cfg.sample_rate
@@ -79,6 +80,12 @@ def calculate_xcorr(cfg: DictConfig):
             rmdir_and_contents(gen_audio_dir_resampled)
 
     score = lags / count
-    print("XCORR:", score)
-    with open(Path(cfg.gen_audio_dir) / "xcorr.json", "w") as f:
-        json.dump({"XCORR": score}, f, indent=4)
+
+    if cfg.get("verbose", False):
+        print("XCORR:", score)
+
+    if cfg.get("save", False):
+        with open(Path(cfg.samples) / "xcorr.json", "w") as f:
+            json.dump({"XCORR": score}, f, indent=4)
+
+    return {"XCORR": score}

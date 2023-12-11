@@ -253,12 +253,12 @@ class PasstKLDivergenceMetric(KLDivergenceMetric):
             return None
 
 
-def calculate_kld(cfg: DictConfig):
+def calculate_kld(cfg: DictConfig) -> tp.Dict[str, tp.Dict[str, float]]:
     """Calculate Kulback-Leibler Divergence."""
     kld_metric = PasstKLDivergenceMetric(pretrained_length=cfg.pretrained_length)
     dataset = AudioDataset(
-        audio_samples_dir=Path(cfg.audio_samples),
-        audio_gts_dir=Path(cfg.audio_gts),
+        audio_samples_dir=Path(cfg.samples),
+        audio_gts_dir=Path(cfg.gts),
         duration=cfg.duration,
     )
     loader = DataLoader(
@@ -274,7 +274,11 @@ def calculate_kld(cfg: DictConfig):
 
     kld = kld_metric.compute()
 
-    with open(Path(cfg.audio_samples) / "kld.json", "w") as f:
-        json.dump(kld, f, indent=4)
+    if cfg.get("save", False):
+        with open(Path(cfg.samples) / "kld.json", "w") as f:
+            json.dump(kld, f, indent=4)
 
-    print("KLD:", kld)
+    if cfg.get("verbose", False):
+        print("KLD:", kld)
+
+    return {"KLD": kld}
