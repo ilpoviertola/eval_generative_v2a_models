@@ -32,8 +32,8 @@ def main(pipeline: DictConfig):
     all_scores = []
     all_scores.append(
         {
-            "sample_dir": pipeline.get("samples", "?"),
-            "gt_dir": pipeline.get("audio_gts", "?"),
+            "sample_dir": pipeline.get("samples", ""),
+            "gt_dir": pipeline.get("audio_gts", ""),
         }
     )
     for cfg in pipeline.pipeline:

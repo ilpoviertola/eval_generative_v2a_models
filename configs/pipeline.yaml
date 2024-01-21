@@ -1,8 +1,8 @@
 save_individual_metrics: false
-score_save_path: ./  # path to save the scores
+score_save_path: ${samples}  # path to save the scores
 verbose: false
-samples: /home/hdd/data/greatesthits/evaluation/generated_files_debug  # must be a directory with .wav and .mp4 files
-audio_gts: /home/hdd/data/greatesthits/evaluation/gt_evaluation_files_debug  # must be a directory with .wav files
+samples: /home/hdd/data/greatesthits/evaluation/24-01-04T09-08-19/generated_samples_24-01-11T08-41-34 # must be a directory with .wav and .mp4 files
+audio_gts: /home/hdd/data/greatesthits/evaluation/GT  # must be a directory with .wav files
 
 pipeline:
   - metric: fad
