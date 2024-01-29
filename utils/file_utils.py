@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Tuple
+import shutil
 
 import numpy as np
 import julius
@@ -133,3 +134,11 @@ def rmdir_and_contents(dir_path: Path):
     for file in dir_path.glob("*"):
         file.unlink()
     dir_path.rmdir()
+
+
+def copy_files(source_dir: Path, destination_dir: Path, file_mask: str = "*.wav"):
+    """Copy files from source directory to destination directory."""
+    destination_dir.mkdir(exist_ok=True, parents=True)
+    for file in source_dir.glob(file_mask):
+        shutil.copy(file, destination_dir / file.name)
+    return destination_dir

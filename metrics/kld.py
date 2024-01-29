@@ -253,32 +253,36 @@ class PasstKLDivergenceMetric(KLDivergenceMetric):
             return None
 
 
-def calculate_kld(cfg: DictConfig) -> tp.Dict[str, tp.Dict[str, float]]:
+def calculate_kld(
+    audio_samples_dir: str,
+    audio_gts_dir: str,
+    batch_size: int = 10,
+    num_workers: int = 10,
+    duration: float = 2.0,
+    pretrained_length: int = 10,
+    verbose: bool = False,
+) -> float:
     """Calculate Kulback-Leibler Divergence."""
-    kld_metric = PasstKLDivergenceMetric(pretrained_length=cfg.pretrained_length)
+    kld_metric = PasstKLDivergenceMetric(pretrained_length=pretrained_length)
     dataset = AudioDataset(
-        audio_samples_dir=Path(cfg.samples),
-        audio_gts_dir=Path(cfg.gts),
-        duration=cfg.duration,
+        audio_samples_dir=Path(audio_samples_dir),
+        audio_gts_dir=Path(audio_gts_dir),
+        duration=duration,
     )
     loader = DataLoader(
-        dataset, batch_size=cfg.batch_size, num_workers=cfg.num_workers, shuffle=False
+        dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False
     )
     for batch in loader:
         kld_metric(
             batch["sample_audio"],
             batch["gt_audio"],
-            sizes=torch.full((cfg.batch_size,), batch["sample_audio"].shape[-1]),
+            sizes=torch.full((batch_size,), batch["sample_audio"].shape[-1]),
             sample_rates=batch["sample_audio_sr"],
         )
 
     kld = kld_metric.compute()
 
-    if cfg.get("save", False):
-        with open(Path(cfg.samples) / "kld.json", "w") as f:
-            json.dump(kld, f, indent=4)
-
-    if cfg.get("verbose", False):
+    if verbose:
         print("KLD:", kld)
 
-    return {"KLD": kld}
+    return kld["kld"]
