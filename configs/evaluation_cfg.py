@@ -5,8 +5,8 @@ import typing as tp
 
 @dataclass
 class FADCfg:
-    model_name: str = "encodec"
-    sample_rate: int = 24000
+    model_name: str = "vggish"
+    sample_rate: int = 16000
     use_pca: bool = False
     use_activation: bool = False
     dtype: str = "float32"

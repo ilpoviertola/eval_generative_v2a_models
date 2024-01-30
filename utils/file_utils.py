@@ -116,7 +116,11 @@ def resample_dir_if_needed(
     output_path = output_path or dir_path.parent / f"{dir_path.name}_{new_sample_rate}"
     output_path.mkdir(exist_ok=True, parents=True)
 
-    for file_path in tqdm(dir_path.glob("*.wav")):
+    for file_path in tqdm(
+        dir_path.glob("*.wav"),
+        desc=f"Resampling directory {dir_path.name} to {new_sample_rate} Hz",
+        total=len(list(dir_path.glob("*.wav"))),
+    ):
         _, resampled = resample_file_if_needed(
             file_path, new_sample_rate, output_path / file_path.name
         )
@@ -126,11 +130,14 @@ def resample_dir_if_needed(
     if resampled_dir:
         return output_path, True
 
+    rmdir_and_contents(output_path)  # remove empty directory
     return dir_path, False
 
 
-def rmdir_and_contents(dir_path: Path):
+def rmdir_and_contents(dir_path: Path, verbose: bool = False):
     """Remove a directory and its contents."""
+    if verbose:
+        print(f"Removing directory {dir_path} and its contents.")
     for file in dir_path.glob("*"):
         file.unlink()
     dir_path.rmdir()

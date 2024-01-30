@@ -17,6 +17,6 @@ def sample_dirs():
 @pytest.fixture
 def pipeline():
     return {
-        "fad": {"model_name": "encodec"},
+        "fad": {"model_name": "vggish"},
         "kld": {"pretrained_length": 10},
     }
