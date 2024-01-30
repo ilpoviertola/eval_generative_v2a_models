@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.pt
 .mypy_cache/
+.pytest_cache/
 
 # C extensions
 *.so
