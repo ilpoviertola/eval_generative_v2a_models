@@ -7,9 +7,11 @@ import julius
 import torch
 from tqdm import tqdm
 from audiotools import Meter
-
 from torchaudio import load, save
 from torchaudio.transforms import Resample
+import torchvision
+
+from submodules.SparseSync.scripts.example import reencode_video
 
 
 class AudioLoudnessNormalize(torch.nn.Module):
@@ -128,6 +130,85 @@ def resample_dir_if_needed(
             resampled_dir = True
 
     if resampled_dir:
+        return output_path, True
+
+    rmdir_and_contents(output_path)  # remove empty directory
+    return dir_path, False
+
+
+def reencode_video_if_needed(
+    file_path: Path,
+    vfps: int,
+    afps: int,
+    input_size: int,
+    output_path: Optional[Path] = None,
+) -> Tuple[Path, bool]:
+    """Reencode a video file if the frame rates or input size are not the same as the desired frame rates or input size.
+
+    Args:
+        file_path (Path): Path to video file.
+        vfps (int): Desired video frame rate.
+        afps (int): Desired audio frame rate.
+        input_size (int): Desired input size.
+        output_path (Optional[Path]): Path to directory containing video files.
+
+    Returns:
+        Tuple[Path, bool]: Path to (reencoded) video file and whether the file was reencoded.
+    """
+    output_path = (
+        output_path
+        or file_path.parent / f"{file_path.stem}_{vfps}_{afps}_{input_size}.mp4"
+    )
+    assert output_path.suffix == ".mp4", "Output file must be a .mp4 file."
+    output_path.parent.mkdir(exist_ok=True, parents=True)
+
+    v, a, vid_meta = torchvision.io.read_video(file_path.as_posix(), pts_unit="sec")
+    _, H, W, _ = v.shape
+    if (
+        vid_meta["video_fps"] != vfps
+        or vid_meta["audio_fps"] != afps
+        or min(H, W) != input_size
+    ):
+        output_path = reencode_video(file_path, vfps, afps, input_size)
+        return Path(output_path), True
+    return file_path, False
+
+
+def reencode_dir_if_needed(
+    dir_path: Path,
+    vfps: int,
+    afps: int,
+    input_size: int,
+    output_path: Optional[Path] = None,
+) -> Tuple[Path, bool]:
+    """Reencode a directory of video files if the frame rates or input size are not the same as the desired frame rates or input size.
+
+    Args:
+        dir_path (Path): Path to directory containing video files.
+        vfps (int): Desired video frame rate.
+        afps (int): Desired audio frame rate.
+        input_size (int): Desired input size.
+        output_path (Optional[Path]): Path to directory containing video files.
+
+    Returns:
+        Tuple[Path, bool]: Path to (reencoded) dir and whether the files were reencoded.
+    """
+    reencoded_dir = False
+    output_path = output_path or dir_path.parent / f"{dir_path.name}_{vfps}_{afps}"
+    output_path.mkdir(exist_ok=True, parents=True)
+
+    for file_path in tqdm(
+        dir_path.glob("*.mp4"),
+        desc=f"Reencoding directory {dir_path.name} to {vfps} fps, {afps} afps, {input_size} input size",
+        total=len(list(dir_path.glob("*.mp4"))),
+    ):
+        _, reencoded = reencode_video_if_needed(
+            file_path, vfps, afps, input_size, output_path / file_path.name
+        )
+        if reencoded:
+            reencoded_dir = True
+
+    if reencoded_dir:
         return output_path, True
 
     rmdir_and_contents(output_path)  # remove empty directory

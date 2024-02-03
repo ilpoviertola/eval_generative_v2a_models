@@ -2,7 +2,7 @@ from pathlib import Path
 
 from frechet_audio_distance import FrechetAudioDistance
 
-from utils.file_utils import copy_files, rmdir_and_contents
+from eval_utils.file_utils import copy_files, rmdir_and_contents
 
 
 def calculate_fad(

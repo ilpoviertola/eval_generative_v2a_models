@@ -6,7 +6,7 @@ import typing as tp
 @dataclass
 class FADCfg:
     model_name: str = "vggish"
-    sample_rate: int = 16000
+    sample_rate: int = 16_000
     use_pca: bool = False
     use_activation: bool = False
     dtype: str = "float32"
@@ -31,9 +31,24 @@ class KLDCfg:
 
 
 @dataclass
+class InSyncCfg:
+    exp_name: str = "24-01-25T18-57-06"
+    device: str = "cuda:0"
+    vfps: int = 25
+    afps: int = 24_000
+    input_size: int = 224
+    ckpt_parent_path: str = "./logs/sync_models"
+
+    def __post_init__(self):
+        # TODO: checking
+        pass
+
+
+@dataclass
 class PipelineCfg:
-    fad: FADCfg
-    kld: KLDCfg
+    fad: FADCfg = None
+    kld: KLDCfg = None
+    insync: InSyncCfg = None
 
 
 @dataclass

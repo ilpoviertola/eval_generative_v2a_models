@@ -11,16 +11,14 @@ from functools import partial
 import logging
 import os
 import typing as tp
-import json
 from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
 import torchmetrics
-from omegaconf import DictConfig
 
-from utils.file_utils import convert_audio
-from utils.dataset import AudioDataset
+from eval_utils.file_utils import convert_audio
+from eval_utils.dataset import AudioDataset
 
 logger = logging.getLogger(__name__)
 

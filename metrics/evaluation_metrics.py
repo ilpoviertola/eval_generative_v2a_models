@@ -1,11 +1,15 @@
 import typing as tp
-from dataclasses import asdict, fields
+from dataclasses import asdict
 import warnings
+from pathlib import Path
+from datetime import datetime
+import yaml
 
 from configs.evaluation_cfg import EvaluationCfg
 from metrics.fad import calculate_fad
 from metrics.kld import calculate_kld
-from utils.file_utils import resample_dir_if_needed, rmdir_and_contents
+from metrics.insync import calculate_insync
+from eval_utils.file_utils import resample_dir_if_needed, rmdir_and_contents
 
 
 class EvaluationMetrics:
@@ -13,21 +17,33 @@ class EvaluationMetrics:
         self.cfg = cfg
         self.results: tp.Dict[str, tp.Any] = {}
 
-    def run_all(self) -> None:
-        pipeline = self.cfg.pipeline
-        scores = {}
+    def run_all(self, force_recalculate: bool = False) -> None:
+        self.run_fad(force_recalculate)
+        self.run_kld(force_recalculate)
+        self.run_insync(force_recalculate)
 
-        for field in fields(pipeline):
-            if field.name.lower() == "fad":
-                scores["fad"] = self.run_fad()
-            elif field.name.lower() == "kld":
-                scores["kld"] = self.run_kld()
-            else:
-                raise ValueError(f"Unknown metric {field.name.lower()}")
+    def run_insync(
+        self, force_recalculate: bool = False
+    ) -> tp.Tuple[float, tp.Dict[str, float]]:
+        pipeline = self.cfg.pipeline
+        if pipeline.insync is None:
+            raise ValueError("No InSync configuration found in pipeline")
+        if "insync" in self.results and not force_recalculate:
+            print("InSync already calculated, skipping...")
+            return self.results["insync"]
+
+        score, score_per_video = calculate_insync(
+            samples=self.cfg.sample_directory.as_posix(),
+            verbose=self.cfg.verbose,
+            **asdict(pipeline.insync),
+        )
+        self.results["insync"] = float(score)
+        self.results["insync_per_video"] = score_per_video
+        return float(score), score_per_video
 
     def run_kld(self, force_recalculate: bool = False) -> float:
         pipeline = self.cfg.pipeline
-        if not any(field.name == "kld" for field in fields(pipeline)):
+        if pipeline.kld is None:
             raise ValueError("No KLD configuration found in pipeline")
         if "kld" in self.results and not force_recalculate:
             print("KLD already calculated, skipping...")
@@ -43,12 +59,12 @@ class EvaluationMetrics:
                 verbose=self.cfg.verbose,
                 **asdict(pipeline.kld),
             )
-        self.results["kld"] = score
-        return score
+        self.results["kld"] = float(score)
+        return float(score)
 
     def run_fad(self, force_recalculate: bool = False) -> float:
         pipeline = self.cfg.pipeline
-        if not any(field.name == "fad" for field in fields(pipeline)):
+        if pipeline.fad is None:
             raise ValueError("No FAD configuration found in pipeline")
         if "fad" in self.results and not force_recalculate:
             print("FAD already calculated, skipping...")
@@ -96,5 +112,43 @@ class EvaluationMetrics:
             rmdir_and_contents(sample_dir, verbose=self.cfg.verbose)
         if resampled_gt:
             rmdir_and_contents(gt_dir, verbose=self.cfg.verbose)
-        self.results["fad"] = score
-        return score
+        self.results["fad"] = float(score)
+        return float(score)
+
+    def export_results(
+        self, output_path: tp.Optional[tp.Union[str, Path]] = None
+    ) -> None:
+        if output_path is None:
+            assert (
+                self.cfg.result_directory is not None
+            ), "No directory specified where to export results"
+            output_path = (
+                self.cfg.result_directory
+                / f"results_{self._get_current_timestamp()}.yaml"
+            )
+
+        if isinstance(output_path, str):
+            output_path = Path(output_path)
+
+        assert not output_path.exists(), f"Result file {output_path} already exists"
+
+        if output_path.suffix != ".yaml":
+            print("Warning: Changing output file suffix to .yaml")
+            output_path = output_path.with_suffix(".yaml")
+
+        with open(output_path, "w") as f:
+            yaml.dump(self.results, f)
+
+        print(f"Results exported to {output_path}")
+
+    def print_results(self) -> None:
+        print(f"GT directory: {self.cfg.gt_directory}")
+        print(f"Sample directory: {self.cfg.sample_directory}")
+        print(f"Result directory: {self.cfg.result_directory}")
+        print(f"Results:")
+        for metric, score in self.results.items():
+            print(f"{metric}: {score}")
+
+    @staticmethod
+    def _get_current_timestamp() -> str:
+        return datetime.now().strftime("%y-%m-%dT%H-%M-%S")
