@@ -1,3 +1,0 @@
-[submodule "submodules/SparseSync"]
-	path = submodules/SparseSync
-	url = git@github.com:ilpoviertola/SparseSync.git
