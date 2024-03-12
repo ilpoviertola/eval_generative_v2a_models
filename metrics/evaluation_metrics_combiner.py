@@ -82,7 +82,7 @@ class EvaluationMetricsCombiner:
         """
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots())
+        fig, ax = plt.subplots()
         ax.plot(self.all_results[metric_type][0], self.all_results[metric_type][1])
         ax.set_xlabel("Sample directory")
         ax.set_ylabel(metric_type)
