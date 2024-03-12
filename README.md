@@ -1,6 +1,6 @@
-# Evaluation of Generative Audio Models
+# Evaluation of Generative Visual to Audio Models
 
-This repo is a collection of scripts to evaluate generative audio models. It is based on PyTorch.
+This repo provides an easy way to evaluate generative V2A models. It is based on PyTorch.
 
 ## Usage
 
