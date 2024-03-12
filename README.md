@@ -14,10 +14,18 @@ First, you need to install the required environment. You can do this by running 
 conda env create -f conda_env.yaml
 ```
 
-### 3. Download Synchformer checkpoints
+### 2. Download Synchformer checkpoints
 
 This evaluation pipeline uses [Synchformer](https://github.com/v-iashin/Synchformer) model to analyze the audio-visual synchronization. Run the following command to download the Synchformer checkpoints:
 
 ```bash
 bash ./checkpoints/download_synchformer_checkpoints.sh
 ```
+
+### 3. Make sure the data is available
+
+Ground truth videos are expected.
+
+### 4. Run the evaluation pipeline
+
+Use run_evaluations.ipynb to run the pipeline. All the required steps are described in the notebook.
