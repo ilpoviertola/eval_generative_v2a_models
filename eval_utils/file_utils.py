@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Optional, Tuple
 import shutil
+import subprocess
+import os
 
 import numpy as np
 import julius
@@ -11,7 +13,11 @@ from torchaudio import load, save
 from torchaudio.transforms import Resample
 import torchvision
 
-from submodules.SparseSync.scripts.example import reencode_video
+
+VCODEC = "h264"
+CRF = 10
+PIX_FMT = "yuv420p"
+ACODEC = "aac"
 
 
 class AudioLoudnessNormalize(torch.nn.Module):
@@ -27,6 +33,52 @@ class AudioLoudnessNormalize(torch.nn.Module):
         gain = self.target_loudness - loudness
         gain = torch.exp(gain * self.GAIN_FACTOR)
         return wav * gain[:, None, None]
+
+
+def which_ffmpeg() -> str:
+    """Determines the path to ffmpeg library
+    Returns:
+        str -- path to the library
+    """
+    result = subprocess.run(
+        ["which", "ffmpeg"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+    ffmpeg_path = result.stdout.decode("utf-8").replace("\n", "")
+    return ffmpeg_path
+
+
+def get_new_path(
+    path, vcodec, acodec, v_fps, min_side, a_fps, orig_path, prefix="video"
+) -> Path:
+    new_folder_name = f"{vcodec}_{prefix}_{v_fps}fps_{min_side}side_{a_fps}hz_{acodec}"
+    if "vggsound" in str(orig_path):
+        new_folder_path = orig_path.parent / new_folder_name
+    elif "mjpeg" in str(orig_path) or "lrs3" in str(orig_path):
+        new_folder_path = Path(
+            str(path.parent).replace(orig_path.name, f"/{new_folder_name}/")
+        )
+    elif "greatesthit" in str(orig_path):
+        new_folder_path = orig_path.parents[0] / new_folder_name
+    else:
+        raise NotImplementedError
+    os.makedirs(new_folder_path, exist_ok=True)
+    new_path = new_folder_path / path.name
+    return new_path
+
+
+def reencode_video(path, vfps, afps, min_side, new_path):
+    # reencode the original mp4: rescale, resample video and resample audio
+    cmd = f"{which_ffmpeg()}"
+    # no info/error printing
+    cmd += " -hide_banner -loglevel panic"
+    cmd += f" -i {path}"
+    # 1) change fps, 2) resize: min(H,W)=MIN_SIDE (vertical vids are supported), 3) change audio framerate
+    cmd += f" -vf fps={vfps},scale=iw*{min_side}/'min(iw,ih)':ih*{min_side}/'min(iw,ih)',crop='trunc(iw/2)'*2:'trunc(ih/2)'*2"
+    cmd += f" -vcodec {VCODEC} -pix_fmt {PIX_FMT} -crf {CRF}"
+    cmd += f" -acodec {ACODEC} -ar {afps} -ac 1"
+    cmd += f" {new_path}"
+    if not new_path.exists():
+        subprocess.call(cmd.split())
 
 
 def convert_audio_channels(wav: torch.Tensor, channels: int = 2) -> torch.Tensor:
@@ -169,8 +221,8 @@ def reencode_video_if_needed(
         or vid_meta["audio_fps"] != afps
         or min(H, W) != input_size
     ):
-        output_path = reencode_video(file_path, vfps, afps, input_size)
-        return Path(output_path), True
+        reencode_video(file_path, vfps, afps, input_size, output_path)
+        return output_path, True
     return file_path, False
 
 

@@ -5,8 +5,8 @@ from pathlib import Path
 
 sys.path.append(".")
 from configs.evaluation_cfg import EvaluationCfg, FADCfg, KLDCfg, PipelineCfg
-from utils.utils import dataclass_from_dict
-from utils.test_utils import sample_dirs, pipeline  # fixtures
+from eval_utils.utils import dataclass_from_dict
+from eval_utils.test_utils import sample_dirs, pipeline  # fixtures
 
 
 def test_init_evaluation_cfg(sample_dirs, pipeline):

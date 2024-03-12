@@ -32,12 +32,12 @@ class KLDCfg:
 
 @dataclass
 class InSyncCfg:
-    exp_name: str = "24-01-25T18-57-06"
+    exp_name: str = "24-01-04T16-39-21"
     device: str = "cuda:0"
     vfps: int = 25
-    afps: int = 24_000
-    input_size: int = 224
-    ckpt_parent_path: str = "./logs/sync_models"
+    afps: int = 16_000
+    input_size: int = 256
+    ckpt_parent_path: str = "./checkpoints/sync_models"
 
     def __post_init__(self):
         # TODO: checking
@@ -66,9 +66,10 @@ class EvaluationCfg:
     def __post_init__(self):
         assert self.sample_directory.is_dir(), "sample_directory not existing directory"
 
-        assert (
-            self.gt_directory.is_dir()
-        ), "gt_directory must be a Path object to an existing directory"
+        if self.pipeline.fad is not None or self.pipeline.kld is not None:
+            assert (
+                self.gt_directory.is_dir()
+            ), "gt_directory must be a Path object to an existing directory"
 
         if self.result_directory is None:
             self.result_directory = self.sample_directory
