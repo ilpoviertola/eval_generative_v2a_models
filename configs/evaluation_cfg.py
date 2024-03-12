@@ -58,7 +58,7 @@ class EvaluationCfg:
     # defined evaluation pipeline
     pipeline: PipelineCfg
     # ground truth data (.wav)
-    gt_directory: Path = Path("/home/hdd/data/greatesthits/evaluation/GT")
+    gt_directory: Path
     # directories to save evaluation results
     result_directory: tp.Optional[Path] = None
     verbose: bool = False

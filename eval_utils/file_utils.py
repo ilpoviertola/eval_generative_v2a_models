@@ -69,6 +69,7 @@ def get_new_path(
 def reencode_video(path, vfps, afps, min_side, new_path):
     # reencode the original mp4: rescale, resample video and resample audio
     cmd = f"{which_ffmpeg()}"
+    assert cmd != "", "activate an env with ffmpeg/ffprobe"
     # no info/error printing
     cmd += " -hide_banner -loglevel panic"
     cmd += f" -i {path}"
@@ -265,6 +266,65 @@ def reencode_dir_if_needed(
 
     rmdir_and_contents(output_path)  # remove empty directory
     return dir_path, False
+
+
+def save_audio_from_video(file_path: Path, output_path: Optional[Path] = None) -> Path:
+    """Save audio from video file.
+
+    Args:
+        file_path (Path): Path to video file.
+        output_path (Optional[Path]): Path to directory containing audio files.
+
+    Returns:
+        Path: Path to audio file.
+    """
+    output_path = output_path or file_path.parent / f"{file_path.stem}.wav"
+    assert output_path.suffix == ".wav", "Output file must be a .wav file."
+    output_path.parent.mkdir(exist_ok=True, parents=True)
+
+    # reencode the original mp4: rescale, resample video and resample audio
+    cmd = f"{which_ffmpeg()}"
+    assert cmd != "", "activate an env with ffmpeg/ffprobe"
+    cmd += " -hide_banner -loglevel panic"  # no info/error printing
+    cmd += f" -i {file_path.as_posix()}"
+    cmd += f" -acodec {ACODEC} -ac 1"
+    cmd += f" {output_path.as_posix()}"
+    if not output_path.exists():
+        subprocess.call(cmd.split())
+    return output_path
+
+
+def extract_audios_from_video_dir_if_needed(
+    video_dir_path: Path, output_path: Optional[Path] = None
+) -> Tuple[Path, bool]:
+    """Extract audio from video files in a directory.
+
+    Args:
+        video_dir_path (Path): Path to video directory.
+        afps (int): Desired audio frame rate.
+        output_path (Optional[Path], optional): Outputpath for audios. Defaults to None.
+
+    Returns:
+        Tuple[Path, bool]: Audio save path and whether the audio was extracted.
+    """
+    video_file_amnt = len(list(video_dir_path.glob("*.mp4")))
+    audio_file_amnt = len(list(video_dir_path.glob("*.wav")))
+
+    if video_file_amnt == audio_file_amnt:
+        print("Amount of video and audio files match. No need to extract audio.")
+        return video_dir_path, False
+
+    output_path = output_path or video_dir_path
+    output_path.mkdir(exist_ok=True, parents=True)
+
+    for file_path in tqdm(
+        video_dir_path.glob("*.mp4"),
+        desc=f"Extracting audio from {video_dir_path.name}",
+        total=video_file_amnt,
+    ):
+        save_audio_from_video(file_path, output_path / f"{file_path.stem}.wav")
+
+    return output_path, True
 
 
 def rmdir_and_contents(dir_path: Path, verbose: bool = False):

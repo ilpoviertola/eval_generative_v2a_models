@@ -17,7 +17,7 @@ import torch
 from torch.utils.data import DataLoader
 import torchmetrics
 
-from eval_utils.file_utils import convert_audio
+from eval_utils.file_utils import convert_audio, extract_audios_from_video_dir_if_needed
 from eval_utils.dataset import AudioDataset
 
 logger = logging.getLogger(__name__)
@@ -262,9 +262,13 @@ def calculate_kld(
 ) -> float:
     """Calculate Kulback-Leibler Divergence."""
     kld_metric = PasstKLDivergenceMetric(pretrained_length=pretrained_length)
+    audio_samples_dir, _ = extract_audios_from_video_dir_if_needed(
+        Path(audio_samples_dir)
+    )
+    audio_gts_dir, _ = extract_audios_from_video_dir_if_needed(Path(audio_gts_dir))
     dataset = AudioDataset(
-        audio_samples_dir=Path(audio_samples_dir),
-        audio_gts_dir=Path(audio_gts_dir),
+        audio_samples_dir=audio_samples_dir,
+        audio_gts_dir=audio_gts_dir,
         duration=duration,
     )
     loader = DataLoader(

@@ -14,6 +14,12 @@ First, you need to install the required environment. You can do this by running 
 conda env create -f conda_env.yaml
 ```
 
+Also, [AudioTools by Descript Inc.](https://github.com/descriptinc/audiotools) is needed for audio processing. You can install it by running the following command:
+
+```bash
+pip install git+https://github.com/descriptinc/audiotools
+```
+
 ### 2. Download Synchformer checkpoints
 
 This evaluation pipeline uses [Synchformer](https://github.com/v-iashin/Synchformer) model to analyze the audio-visual synchronization. Run the following command to download the Synchformer checkpoints:
