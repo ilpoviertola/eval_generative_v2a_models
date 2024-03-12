@@ -139,8 +139,8 @@ def calculate_insync(
             )
             insync = off_cls == targets["offset_target"].cpu()
 
-            for i, vid_path in enumerate(batch["path"]):
-                results[vid_path] = {
+            for i, path in enumerate(batch["path"]):
+                results[path] = {
                     "insync": insync[i].item(),
                     "offset_sec": round(grid[off_cls[i].item()].item(), 3),
                     "prob": None,
