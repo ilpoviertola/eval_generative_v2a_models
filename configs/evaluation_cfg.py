@@ -86,3 +86,4 @@ class EvaluationCfg:
         print(f"result_directory: {self.result_directory}")
         print(self.pipeline)
         print(f"verbose: {self.verbose}")
+        print()

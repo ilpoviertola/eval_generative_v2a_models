@@ -19,13 +19,17 @@ class EvaluationMetrics:
         self.update_last_calculated_ts()
 
     def run_all(self, force_recalculate: bool = False) -> None:
-        self.run_fad(force_recalculate)
-        self.run_kld(force_recalculate)
-        self.run_insync(force_recalculate)
+        pipeline = self.cfg.pipeline
+        if pipeline.fad is not None:
+            self.run_fad(force_recalculate)
+        if pipeline.kld is not None:
+            self.run_kld(force_recalculate)
+        if pipeline.insync is not None:
+            self.run_insync(force_recalculate)
 
     def run_insync(
         self, force_recalculate: bool = False
-    ) -> tp.Tuple[float, tp.Dict[str, float]]:
+    ) -> tp.Tuple[float, tp.Dict[str, tp.Dict[str, tp.Union[int, float, None]]]]:
         pipeline = self.cfg.pipeline
         if pipeline.insync is None:
             raise ValueError("No InSync configuration found in pipeline")
@@ -122,7 +126,7 @@ class EvaluationMetrics:
 
     def export_results(
         self, output_path: tp.Optional[tp.Union[str, Path]] = None
-    ) -> None:
+    ) -> Path:
         if output_path is None:
             assert (
                 self.cfg.result_directory is not None
@@ -137,7 +141,7 @@ class EvaluationMetrics:
             print(
                 "You must recalculate the results or specify a different output file."
             )
-            return
+            return output_path
 
         if output_path.suffix != ".yaml":
             print("Warning: Changing output file suffix to .yaml")
@@ -147,6 +151,16 @@ class EvaluationMetrics:
             yaml.dump(self.results, f)
 
         print(f"Results exported to {output_path}")
+        return output_path
+
+    def read_results(self, path: tp.Union[str, Path]) -> tp.Dict[str, tp.Any]:
+        if isinstance(path, str):
+            path = Path(path)
+        with open(path, "r") as f:
+            results = yaml.safe_load(f)
+
+        self.results = results
+        return results
 
     def print_results(self) -> None:
         print(f"GT directory: {self.cfg.gt_directory}")
