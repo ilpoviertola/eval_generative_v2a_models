@@ -138,6 +138,7 @@ def calculate_insync(
                 torch.softmax(off_logits.float(), dim=-1).detach().cpu().argmax(dim=1)
             )
             insync = off_cls == targets["offset_target"].cpu()
+            insync_samples += torch.sum(insync).item()
 
             for i, path in enumerate(batch["path"]):
                 results[path] = {

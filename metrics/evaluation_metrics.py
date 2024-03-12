@@ -16,6 +16,7 @@ class EvaluationMetrics:
     def __init__(self, cfg: EvaluationCfg) -> None:
         self.cfg = cfg
         self.results: tp.Dict[str, tp.Any] = {}
+        self.update_last_calculated_ts()
 
     def run_all(self, force_recalculate: bool = False) -> None:
         self.run_fad(force_recalculate)
@@ -32,6 +33,7 @@ class EvaluationMetrics:
             print("InSync already calculated, skipping...")
             return self.results["insync"]
 
+        self.update_last_calculated_ts()
         score, score_per_video = calculate_insync(
             samples=self.cfg.sample_directory.as_posix(),
             verbose=self.cfg.verbose,
@@ -51,6 +53,7 @@ class EvaluationMetrics:
 
         # note: no need to resample since KLD does it on the fly
         # filter warnings so user does not have to see them (unnecessary)
+        self.update_last_calculated_ts()
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             score = calculate_kld(
@@ -100,6 +103,8 @@ class EvaluationMetrics:
                 pipeline.fad.sample_rate,
                 self.cfg.gt_directory / f"resampled_to_{pipeline.fad.sample_rate}",
             )
+
+        self.update_last_calculated_ts()
         score = calculate_fad(
             gts=gt_dir.as_posix(),
             samples=sample_dir.as_posix(),
@@ -122,15 +127,17 @@ class EvaluationMetrics:
             assert (
                 self.cfg.result_directory is not None
             ), "No directory specified where to export results"
-            output_path = (
-                self.cfg.result_directory
-                / f"results_{self._get_current_timestamp()}.yaml"
-            )
+            output_path = self.cfg.result_directory / f"results_{self.ts}.yaml"
 
         if isinstance(output_path, str):
             output_path = Path(output_path)
 
-        assert not output_path.exists(), f"Result file {output_path} already exists"
+        if output_path.exists():
+            print(f"Result file {output_path} already exists")
+            print(
+                "You must recalculate the results or specify a different output file."
+            )
+            return
 
         if output_path.suffix != ".yaml":
             print("Warning: Changing output file suffix to .yaml")
@@ -148,6 +155,9 @@ class EvaluationMetrics:
         print(f"Results:")
         for metric, score in self.results.items():
             print(f"{metric}: {score}")
+
+    def update_last_calculated_ts(self) -> None:
+        self.ts = self._get_current_timestamp()
 
     @staticmethod
     def _get_current_timestamp() -> str:
