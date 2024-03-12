@@ -1,10 +1,10 @@
-# Evaluation of Generative Visual to Audio Models
+# Evaluation of Generative Visual to Audio (V2A) Models
 
 This repo provides an easy way to evaluate generative V2A models. It is based on PyTorch.
 
 ## Usage
 
-This section walks you through the process of evaluating a generative audio model. The following steps are required:
+This section walks you through the process of evaluating a generative v2a model. The following steps are required:
 
 ### 1. Install environment
 
