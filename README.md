@@ -28,9 +28,11 @@ This evaluation pipeline uses [Synchformer](https://github.com/v-iashin/Synchfor
 bash ./checkpoints/download_synchformer_checkpoints.sh
 ```
 
-### 3. Make sure the data is available
+### 3. Make sure the data is available in the correct format
 
-Ground truth videos are expected.
+Video data is expected to have the following format:
+- 25 fps, H.264 codec
+- 24000 Hz, AAC codec
 
 ### 4. Run the evaluation pipeline
 
