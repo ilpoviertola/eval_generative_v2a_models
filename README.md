@@ -14,10 +14,11 @@ First, you need to install the required environment. You can do this by running 
 conda env create -f conda_env.yaml
 ```
 
-Also, [AudioTools by Descript Inc.](https://github.com/descriptinc/audiotools) is needed for audio processing. You can install it by running the following command:
+Also, [AudioTools by Descript Inc.](https://github.com/descriptinc/audiotools) is needed for audio processing and PASST model for metrics. You can install them by running the following commands:
 
 ```bash
 pip install git+https://github.com/descriptinc/audiotools
+pip install git+https://github.com/kkoutini/passt_hear21@0.0.19#egg=hear21passt
 ```
 
 ### 2. Download Synchformer checkpoints
@@ -31,6 +32,7 @@ bash ./checkpoints/download_synchformer_checkpoints.sh
 ### 3. Make sure the data is available in the correct format
 
 Video data is expected to have the following format:
+
 - 25 fps, H.264 codec
 - 24000 Hz, AAC codec
 

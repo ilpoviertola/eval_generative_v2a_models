@@ -9,7 +9,12 @@ from configs.evaluation_cfg import EvaluationCfg
 from metrics.fad import calculate_fad
 from metrics.kld import calculate_kld
 from metrics.insync import calculate_insync
-from eval_utils.file_utils import resample_dir_if_needed, rmdir_and_contents
+from eval_utils.file_utils import (
+    to_reencode,
+    rmdir_and_contents,
+    reencode_dir_if_needed,
+    resample_dir_if_needed,
+)
 
 
 class EvaluationMetrics:
@@ -87,11 +92,25 @@ class EvaluationMetrics:
             sample_dir = self.cfg.sample_directory
             resampled_samples = False
         else:
-            sample_dir, resampled_samples = resample_dir_if_needed(
-                self.cfg.sample_directory,
-                pipeline.fad.sample_rate,
-                self.cfg.sample_directory / f"resampled_to_{pipeline.fad.sample_rate}",
-            )
+            if to_reencode(self.cfg.sample_directory):
+                # sample_dir, resampled_samples = reencode_dir_if_needed(
+                #     self.cfg.sample_directory,
+                #     25,
+                #     pipeline.fad.sample_rate,
+                #     256,
+                #     self.cfg.sample_directory
+                #     / f"reencoded_to_{pipeline.fad.sample_rate}hz_25fps",
+                # )
+                sample_dir = self.cfg.sample_directory
+                resampled_samples = False
+            else:
+                sample_dir, resampled_samples = resample_dir_if_needed(
+                    self.cfg.sample_directory,
+                    pipeline.fad.sample_rate,
+                    self.cfg.sample_directory
+                    / f"resampled_to_{pipeline.fad.sample_rate}hz",
+                )
+
         if (
             pipeline.fad.embeddings_fn is not None
             and (self.cfg.gt_directory / pipeline.fad.embeddings_fn).exists()
@@ -102,9 +121,11 @@ class EvaluationMetrics:
             gt_dir = self.cfg.gt_directory
             resampled_gt = False
         else:
-            gt_dir, resampled_gt = resample_dir_if_needed(
+            gt_dir, resampled_gt = reencode_dir_if_needed(
                 self.cfg.gt_directory,
+                25,
                 pipeline.fad.sample_rate,
+                256,
                 self.cfg.gt_directory / f"resampled_to_{pipeline.fad.sample_rate}",
             )
 

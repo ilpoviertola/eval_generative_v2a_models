@@ -12,6 +12,7 @@ from audiotools import Meter
 from torchaudio import load, save
 from torchaudio.transforms import Resample
 import torchvision
+from moviepy.editor import AudioFileClip
 
 
 VCODEC = "h264"
@@ -227,6 +228,7 @@ def reencode_video_if_needed(
     return file_path, False
 
 
+# TODO: implement multiprocessing
 def reencode_dir_if_needed(
     dir_path: Path,
     vfps: int,
@@ -268,7 +270,10 @@ def reencode_dir_if_needed(
     return dir_path, False
 
 
-def save_audio_from_video(file_path: Path, output_path: Optional[Path] = None) -> Path:
+# TODO: implement multiprocessing
+def save_audio_from_video(
+    file_path: Path, samplerate: int, output_path: Optional[Path] = None
+) -> Path:
     """Save audio from video file.
 
     Args:
@@ -280,22 +285,15 @@ def save_audio_from_video(file_path: Path, output_path: Optional[Path] = None) -
     """
     output_path = output_path or file_path.parent / f"{file_path.stem}.wav"
     assert output_path.suffix == ".wav", "Output file must be a .wav file."
-    output_path.parent.mkdir(exist_ok=True, parents=True)
-
-    # reencode the original mp4: rescale, resample video and resample audio
-    cmd = f"{which_ffmpeg()}"
-    assert cmd != "", "activate an env with ffmpeg/ffprobe"
-    cmd += " -hide_banner -loglevel panic"  # no info/error printing
-    cmd += f" -i {file_path.as_posix()}"
-    cmd += f" -acodec {ACODEC} -ac 1"
-    cmd += f" {output_path.as_posix()}"
     if not output_path.exists():
-        subprocess.call(cmd.split())
+        output_path.parent.mkdir(exist_ok=True, parents=True)
+        video_clip = AudioFileClip(str(file_path), fps=samplerate)
+        video_clip.write_audiofile(str(output_path), fps=samplerate, verbose=False)
     return output_path
 
 
 def extract_audios_from_video_dir_if_needed(
-    video_dir_path: Path, output_path: Optional[Path] = None
+    video_dir_path: Path, samplerate: int = 24000, output_path: Optional[Path] = None
 ) -> Tuple[Path, bool]:
     """Extract audio from video files in a directory.
 
@@ -310,8 +308,19 @@ def extract_audios_from_video_dir_if_needed(
     video_file_amnt = len(list(video_dir_path.glob("*.mp4")))
     audio_file_amnt = len(list(video_dir_path.glob("*.wav")))
 
-    if video_file_amnt == audio_file_amnt:
-        print("Amount of video and audio files match. No need to extract audio.")
+    if video_file_amnt == 0 and audio_file_amnt == 0:
+        raise Exception(
+            f"No video or audio files found in {video_dir_path.as_posix()}. Nothing to extract."
+        )
+    elif video_file_amnt == audio_file_amnt:
+        print(
+            f"Amount of video and audio files match in {video_dir_path.as_posix()}. No need to extract audio."
+        )
+        return video_dir_path, False
+    elif video_file_amnt == 0:
+        print(
+            f"No video files found in {video_dir_path.as_posix()}. Nothing to extract."
+        )
         return video_dir_path, False
 
     output_path = output_path or video_dir_path
@@ -322,9 +331,30 @@ def extract_audios_from_video_dir_if_needed(
         desc=f"Extracting audio from {video_dir_path.name}",
         total=video_file_amnt,
     ):
-        save_audio_from_video(file_path, output_path / f"{file_path.stem}.wav")
+        save_audio_from_video(
+            file_path, samplerate, output_path / f"{file_path.stem}.wav"
+        )
 
     return output_path, True
+
+
+def to_reencode(dir_path: Path) -> bool:
+    """
+    This is used in situations where only the audio is needed (WAV).
+    This function checks if the directory already contains audio files
+    extracted from the videos. If not, it returns True, and then reencoding function
+    needs to be called. If the directory already contains audio files, it returns False,
+    and then resampling function needs to be called.
+
+    Args:
+        dir_path (Path): Path to directory containing files.
+
+    Returns:
+        bool: Whether the directory needs to be reencoded.
+    """
+    video_file_amnt = len(list(dir_path.glob("*.mp4")))
+    audio_file_amnt = len(list(dir_path.glob("*.wav")))
+    return video_file_amnt != audio_file_amnt
 
 
 def rmdir_and_contents(dir_path: Path, verbose: bool = False):

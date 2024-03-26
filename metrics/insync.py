@@ -95,6 +95,7 @@ def calculate_insync(
     videos = list(generated_videos_path.glob("*.mp4"))
     insync_samples = 0
     original_video_dir = Path(samples).parts[-1]
+    assert len(videos), f"No videos found in {samples}... Problems with reencoding?"
     for i, vid_path in enumerate(videos):
         vid_path_str = vid_path.as_posix()
         # load visual and audio streams
