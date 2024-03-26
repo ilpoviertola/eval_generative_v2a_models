@@ -1,4 +1,4 @@
-name: eval_gen_audio_models
+name: eval_v2a
 channels:
   - pytorch
   - nvidia
