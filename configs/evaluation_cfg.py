@@ -44,11 +44,27 @@ class InSyncCfg:
         pass
 
 
+# this is basically the same as InSyncCfg
+@dataclass
+class AVClipScoreCfg:
+    exp_name: str = "24-01-04T16-39-21"
+    device: str = "cuda:0"
+    vfps: int = 25
+    afps: int = 16_000
+    input_size: int = 256
+    ckpt_parent_path: str = "./checkpoints/sync_models"
+
+    def __post_init__(self):
+        # TODO: checking
+        pass
+
+
 @dataclass
 class PipelineCfg:
     fad: FADCfg = None
     kld: KLDCfg = None
     insync: InSyncCfg = None
+    avclip_score: AVClipScoreCfg = None
 
 
 @dataclass

@@ -9,6 +9,7 @@ from configs.evaluation_cfg import EvaluationCfg
 from metrics.fad import calculate_fad
 from metrics.kld import calculate_kld
 from metrics.insync import calculate_insync
+from metrics.avclip_score import calculate_avclip_score
 from eval_utils.file_utils import (
     to_reencode,
     rmdir_and_contents,
@@ -31,6 +32,25 @@ class EvaluationMetrics:
             self.run_kld(force_recalculate)
         if pipeline.insync is not None:
             self.run_insync(force_recalculate)
+        if pipeline.avclip_score is not None:
+            self.run_avclip_score(force_recalculate)
+
+    def run_avclip_score(self, force_recalculate: bool = False) -> float:
+        pipeline = self.cfg.pipeline
+        if pipeline.avclip_score is None:
+            raise ValueError("No AVCLIP score configuration found in pipeline")
+        if "avclip_score" in self.results and not force_recalculate:
+            print("AVCLIP score already calculated, skipping...")
+            return self.results["avclip_score"]
+
+        self.update_last_calculated_ts()
+        score = calculate_avclip_score(
+            samples=self.cfg.sample_directory.as_posix(),
+            verbose=self.cfg.verbose,
+            **asdict(pipeline.avclip_score),
+        )
+        self.results["avclip_score"] = score
+        return score
 
     def run_insync(
         self, force_recalculate: bool = False
