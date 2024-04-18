@@ -213,6 +213,8 @@ def reencode_video_if_needed(
         output_path
         or file_path.parent / f"{file_path.stem}_{vfps}_{afps}_{input_size}.mp4"
     )
+    if output_path.exists():
+        return output_path, False
     assert output_path.suffix == ".mp4", "Output file must be a .mp4 file."
     output_path.parent.mkdir(exist_ok=True, parents=True)
 
@@ -288,12 +290,17 @@ def save_audio_from_video(
     if not output_path.exists():
         output_path.parent.mkdir(exist_ok=True, parents=True)
         video_clip = AudioFileClip(str(file_path), fps=samplerate)
-        video_clip.write_audiofile(str(output_path), fps=samplerate, verbose=False)
+        video_clip.write_audiofile(
+            str(output_path), fps=samplerate, verbose=False, logger=None
+        )
     return output_path
 
 
 def extract_audios_from_video_dir_if_needed(
-    video_dir_path: Path, samplerate: int = 24000, output_path: Optional[Path] = None
+    video_dir_path: Path,
+    samplerate: int = 24000,
+    force_extract: bool = False,
+    output_path: Optional[Path] = None,
 ) -> Tuple[Path, bool]:
     """Extract audio from video files in a directory.
 
@@ -308,20 +315,21 @@ def extract_audios_from_video_dir_if_needed(
     video_file_amnt = len(list(video_dir_path.glob("*.mp4")))
     audio_file_amnt = len(list(video_dir_path.glob("*.wav")))
 
-    if video_file_amnt == 0 and audio_file_amnt == 0:
-        raise Exception(
-            f"No video or audio files found in {video_dir_path.as_posix()}. Nothing to extract."
-        )
-    elif video_file_amnt == audio_file_amnt:
-        print(
-            f"Amount of video and audio files match in {video_dir_path.as_posix()}. No need to extract audio."
-        )
-        return video_dir_path, False
-    elif video_file_amnt == 0:
-        print(
-            f"No video files found in {video_dir_path.as_posix()}. Nothing to extract."
-        )
-        return video_dir_path, False
+    if not force_extract:
+        if video_file_amnt == 0 and audio_file_amnt == 0:
+            raise Exception(
+                f"No video or audio files found in {video_dir_path.as_posix()}. Nothing to extract."
+            )
+        elif video_file_amnt == audio_file_amnt:
+            print(
+                f"Amount of video and audio files match in {video_dir_path.as_posix()}. No need to extract audio."
+            )
+            return video_dir_path, False
+        elif video_file_amnt == 0:
+            print(
+                f"No video files found in {video_dir_path.as_posix()}. Nothing to extract."
+            )
+            return video_dir_path, False
 
     output_path = output_path or video_dir_path
     output_path.mkdir(exist_ok=True, parents=True)
@@ -331,9 +339,10 @@ def extract_audios_from_video_dir_if_needed(
         desc=f"Extracting audio from {video_dir_path.name}",
         total=video_file_amnt,
     ):
-        save_audio_from_video(
-            file_path, samplerate, output_path / f"{file_path.stem}.wav"
-        )
+        if force_extract or not (output_path / f"{file_path.stem}.wav").exists():
+            save_audio_from_video(
+                file_path, samplerate, output_path / f"{file_path.stem}.wav"
+            )
 
     return output_path, True
 
@@ -372,3 +381,47 @@ def copy_files(source_dir: Path, destination_dir: Path, file_mask: str = "*.wav"
     for file in source_dir.glob(file_mask):
         shutil.copy(file, destination_dir / file.name)
     return destination_dir
+
+
+def reencode_videos_in_parallel(
+    videos, output_dir, fps=21.5, audio_sample_rate=22050, side=256
+):
+    from concurrent.futures import ProcessPoolExecutor
+    import concurrent
+
+    with ProcessPoolExecutor() as executor:
+        futures = {
+            executor.submit(
+                reencode_video,
+                video.as_posix(),
+                fps,
+                audio_sample_rate,
+                side,
+                output_dir / video.name,
+            ): video
+            for video in videos
+        }
+        for future in tqdm(
+            concurrent.futures.as_completed(futures),
+            total=len(futures),
+            desc="Reencoding videos",
+        ):
+            try:
+                future.result()
+            except Exception as exc:
+                print(f"Generated an exception: {exc}")
+
+
+if __name__ == "__main__":
+    videos = list(
+        Path(
+            "/home/hdd/ilpo/datasets/greatesthit/vis-data-256_h264_video_25fps_256side_24000hz_aac_len_5_splitby_random"
+        ).glob("*.mp4")
+    )
+
+    output_dir = Path(
+        "/home/hdd/ilpo/datasets/greatesthit/vis-data-256_h264_video_21.5fps_256side_22050hz_aac_len_5_splitby_random"
+    )
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    reencode_videos_in_parallel(videos, output_dir)

@@ -66,12 +66,6 @@ def calculate_avclip_score(
     cos_sim = CosineSimilarity(reduction="mean")
     results: List[float] = []
 
-    # reencode data if needed
-    generated_videos_path, reencoded = reencode_dir_if_needed(
-        generated_videos_path, vfps, afps, input_size
-    )
-    print("Reencoded samples" if reencoded else "No need to reencode samples")
-
     batch = []
     videos = list(generated_videos_path.glob("*.mp4"))
     original_video_dir = Path(samples).parts[-1]
@@ -127,9 +121,6 @@ def calculate_avclip_score(
             results.append(cos_sim(vis, aud).item())
 
             batch = []
-
-    if reencoded:
-        rmdir_and_contents(generated_videos_path)
 
     score = float(sum(results) / len(results))
     if verbose:

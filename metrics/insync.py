@@ -80,12 +80,6 @@ def calculate_insync(
     model.eval()
     transforms = get_transforms(model_cfg, ["test"])["test"]
 
-    # reencode data if needed
-    generated_videos_path, reencoded = reencode_dir_if_needed(
-        generated_videos_path, vfps, afps, input_size
-    )
-    print("Reencoded samples" if reencoded else "No need to reencode samples")
-
     max_off_sec = model_cfg.data.max_off_sec
     num_cls = model_cfg.data.num_off_cls
     grid = make_class_grid(-max_off_sec, max_off_sec, num_cls)
@@ -150,7 +144,8 @@ def calculate_insync(
 
             batch = []
 
-    if reencoded:
-        rmdir_and_contents(generated_videos_path)
-
+    score = float(insync_samples / len(results))
+    if verbose:
+        print("InSync:", score)
+        print("Result dict:", results)
     return insync_samples / len(results), results
