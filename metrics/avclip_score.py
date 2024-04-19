@@ -97,7 +97,11 @@ def calculate_avclip_score(
             },
         }
         # applying the transform
-        item = transforms(item)
+        try:
+            item = transforms(item)
+        except Exception as e:
+            print(f"Error while transforming {vid_path_str}: {e}")
+            continue
         batch.append(item)
         if len(batch) == 3 or i == len(videos) - 1:
             # prepare inputs for inference

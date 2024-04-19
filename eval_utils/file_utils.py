@@ -291,7 +291,11 @@ def save_audio_from_video(
         output_path.parent.mkdir(exist_ok=True, parents=True)
         video_clip = AudioFileClip(str(file_path), fps=samplerate)
         video_clip.write_audiofile(
-            str(output_path), fps=samplerate, verbose=False, logger=None
+            str(output_path),
+            fps=samplerate,
+            verbose=False,
+            logger=None,
+            ffmpeg_params=["-ac", "1"],
         )
     return output_path
 

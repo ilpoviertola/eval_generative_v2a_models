@@ -16,6 +16,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 import torchmetrics
+from tqdm import tqdm
 
 from eval_utils.file_utils import convert_audio, extract_audios_from_video_dir_if_needed
 from eval_utils.dataset import AudioDataset
@@ -274,7 +275,7 @@ def calculate_kld(
     loader = DataLoader(
         dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False
     )
-    for batch in loader:
+    for batch in tqdm(loader, desc="Calculating KLD"):
         kld_metric(
             batch["sample_audio"],
             batch["gt_audio"],

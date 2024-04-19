@@ -69,7 +69,9 @@ class PipelineCfg:
 
 @dataclass
 class EvaluationCfg:
-    # directories containing evaluation data (.mp4 and .wav)
+    # unique identifier for the evaluation
+    id: str
+    # directory containing evaluation data (.mp4 and .wav)
     sample_directory: Path
     # defined evaluation pipeline
     pipeline: PipelineCfg
@@ -97,6 +99,7 @@ class EvaluationCfg:
 
     def _print_pipeline(self):
         print("Evaluation pipeline:")
+        print(f"id: {self.id}")
         print(f"sample_directory: {self.sample_directory}")
         print(f"gt_directory: {self.gt_directory}")
         print(f"result_directory: {self.result_directory}")

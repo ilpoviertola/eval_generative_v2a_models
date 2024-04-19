@@ -15,16 +15,40 @@ from eval_utils.file_utils import (
     extract_audios_from_video_dir_if_needed,
     reencode_dir_if_needed,
 )
+from eval_utils.utils import dataclass_from_dict
+
+
+def load_evaluation_metrics_from_file(path: tp.Union[str, Path]) -> "EvaluationMetrics":
+    if isinstance(path, str):
+        path = Path(path)
+    with open(path, "r") as f:
+        data = yaml.safe_load(f)
+
+    cfg_dict = data["cfg"]
+    cfg_dict["gt_directory"] = Path(cfg_dict["gt_directory"])
+    cfg_dict["sample_directory"] = Path(cfg_dict["sample_directory"])
+    cfg_dict["result_directory"] = (
+        Path(cfg_dict["result_directory"])
+        if cfg_dict["result_directory"] is not None
+        else None
+    )
+
+    cfg = dataclass_from_dict(EvaluationCfg, cfg_dict)
+    metrics = EvaluationMetrics(cfg, inited_from_file=True)
+    metrics.results = data["results"]
+    metrics.ts = data["timestamp"]
+    return metrics
 
 
 class EvaluationMetrics:
-    def __init__(self, cfg: EvaluationCfg) -> None:
+    def __init__(self, cfg: EvaluationCfg, inited_from_file: bool = False) -> None:
         self.cfg = cfg
         self.results: tp.Dict[str, tp.Any] = {}
         self.directory_info: tp.Dict[str, tp.Any] = {}
-        self.update_last_calculated_ts()
-        self.clean_sample_directory()
-        self.resolve_directories()
+        if not inited_from_file:
+            self.update_last_calculated_ts()
+            self.clean_sample_directory()
+            self.resolve_directories()
 
     def clean_sample_directory(self) -> None:
         """Move some files that might be in the sample directory to a subdirectory"""
@@ -47,6 +71,7 @@ class EvaluationMetrics:
         """
         pipeline = self.cfg.pipeline
         if pipeline.insync is not None or pipeline.avclip_score is not None:
+            print("Reencoding videos for InSync and AVCLIP scores...")
             vfps = (
                 pipeline.insync.vfps
                 if pipeline.insync is not None
@@ -62,15 +87,27 @@ class EvaluationMetrics:
                 if pipeline.insync is not None
                 else pipeline.avclip_score.input_size
             )
+
             # reencode the generated videos if needed
-            generated_videos_path, resampled = reencode_dir_if_needed(
-                self.cfg.sample_directory,
-                vfps,
-                afps,
-                input_size,
+            if (
                 self.cfg.sample_directory
-                / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size",
-            )
+                / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size"
+            ).exists():
+                print("resampled directory already exists")
+                generated_videos_path = (
+                    self.cfg.sample_directory
+                    / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size"
+                )
+                resampled = True
+            else:
+                generated_videos_path, resampled = reencode_dir_if_needed(
+                    self.cfg.sample_directory,
+                    vfps,
+                    afps,
+                    input_size,
+                    self.cfg.sample_directory
+                    / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size",
+                )
             self.directory_info["generated_videos"] = {
                 f"{vfps}vfps_{afps}afps_{input_size}size": (
                     generated_videos_path,
@@ -79,6 +116,7 @@ class EvaluationMetrics:
             }
 
         if pipeline.fad is not None:
+            print("Extracting audio for FAD...")
             self.directory_info["fad"] = {}
             # check does embeddings exist for groundtruth
             if (
@@ -92,12 +130,16 @@ class EvaluationMetrics:
             else:
                 self.directory_info["fad"]["gt_embeddings"] = False
                 # extract audio from GT videos and sample it to desired frequency
-                gt_audios, _ = extract_audios_from_video_dir_if_needed(
-                    self.cfg.gt_directory,
-                    pipeline.fad.sample_rate,
-                    True,
-                    self.cfg.gt_directory / "audio",
-                )
+                if (self.cfg.gt_directory / "audio").exists():
+                    print("audio directory already exists for GT")
+                    gt_audios = self.cfg.gt_directory / "audio"
+                else:
+                    gt_audios, _ = extract_audios_from_video_dir_if_needed(
+                        self.cfg.gt_directory,
+                        pipeline.fad.sample_rate,
+                        True,
+                        self.cfg.gt_directory / "audio",
+                    )
                 self.directory_info["gt_audios"] = {
                     f"{pipeline.fad.sample_rate}afps": (gt_audios, True)
                 }
@@ -113,12 +155,16 @@ class EvaluationMetrics:
             else:
                 self.directory_info["fad"]["generated_embeddings"] = False
                 # extract audio from generated videos and sample it to desired frequency
-                sample_audios, _ = extract_audios_from_video_dir_if_needed(
-                    self.cfg.sample_directory,
-                    pipeline.fad.sample_rate,
-                    True,
-                    self.cfg.sample_directory / "audio",
-                )
+                if (self.cfg.sample_directory / "audio").exists():
+                    print("audio directory already exists for generated samples")
+                    sample_audios = self.cfg.sample_directory / "audio"
+                else:
+                    sample_audios, _ = extract_audios_from_video_dir_if_needed(
+                        self.cfg.sample_directory,
+                        pipeline.fad.sample_rate,
+                        True,
+                        self.cfg.sample_directory / "audio",
+                    )
                 self.directory_info["sample_audios"] = {
                     f"{pipeline.fad.sample_rate}afps": (sample_audios, True)
                 }
@@ -257,12 +303,6 @@ class EvaluationMetrics:
             verbose=self.cfg.verbose,
             **asdict(pipeline.fad),
         )
-        # if resampled_samples:
-        #     assert type(sample_dir) is str
-        #     rmdir_and_contents(Path(sample_dir), verbose=self.cfg.verbose)
-        # if resampled_gt:
-        #     assert type(gt_dir) is str
-        #     rmdir_and_contents(Path(gt_dir), verbose=self.cfg.verbose)
         self.results["fad"] = float(score)
         return float(score)
 
@@ -289,8 +329,23 @@ class EvaluationMetrics:
             print("Warning: Changing output file suffix to .yaml")
             output_path = output_path.with_suffix(".yaml")
 
+        cfg = asdict(self.cfg)
+        cfg["gt_directory"] = cfg["gt_directory"].as_posix()
+        cfg["sample_directory"] = cfg["sample_directory"].as_posix()
+        cfg["result_directory"] = (
+            cfg["result_directory"].as_posix()
+            if cfg["result_directory"] is not None
+            else None
+        )
+
+        exported_data = {
+            "id": self.cfg.id,
+            "timestamp": self.ts,
+            "cfg": cfg,
+            "results": self.results,
+        }
         with open(output_path, "w") as f:
-            yaml.dump(self.results, f)
+            yaml.dump(exported_data, f)
 
         print(f"Results exported to {output_path}")
         return output_path
@@ -305,6 +360,7 @@ class EvaluationMetrics:
         return results
 
     def print_results(self) -> None:
+        print(f"ID: {self.cfg.id}")
         print(f"GT directory: {self.cfg.gt_directory}")
         print(f"Sample directory: {self.cfg.sample_directory}")
         print(f"Result directory: {self.cfg.result_directory}")
