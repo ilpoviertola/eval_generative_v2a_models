@@ -33,7 +33,7 @@ def calculate_rhythm_similarity(
         gt, _ = librosa.load(
             gt_file,
             sr=sample_rate,
-            offset=start_secs.get(gt_file.name, 0),
+            offset=float(start_secs.get(gt_file.stem, 0)),
             duration=duration,
         )
 

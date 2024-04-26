@@ -31,7 +31,7 @@ def calculate_zcr(
         gt, _ = librosa.load(
             gt_file,
             sr=sample_rate,
-            offset=start_secs.get(gt_file.name, 0),
+            offset=float(start_secs.get(gt_file.stem, 0)),
             duration=duration,
         )
         gt_zcr = np.mean(np.abs(np.diff(np.sign(gt))) > 0)
