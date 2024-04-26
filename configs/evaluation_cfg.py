@@ -23,7 +23,7 @@ class KLDCfg:
     pretrained_length: int = 10
     batch_size: int = 10
     num_workers: int = 10
-    duration: float = 2.0
+    duration: float = 2.56
 
     def __post_init__(self):
         # TODO: checking
@@ -62,19 +62,19 @@ class AVClipScoreCfg:
 @dataclass
 class ZCRCfg:
     afps: int = 24_000
-    sample_size: int = 10_000
+    duration: float = 2.56
 
 
 @dataclass
 class RhythmSimilarityCfg:
     afps: int = 24_000
-    sample_size: int = 10_000
+    duration: float = 2.56
 
 
 @dataclass
 class SpectralContrastSimilarityCfg:
     afps: int = 24_000
-    sample_size: int = 10_000
+    duration: float = 2.56
 
 
 @dataclass

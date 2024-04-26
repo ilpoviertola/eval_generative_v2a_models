@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 from torch.nn.functional import pad
 from torch.utils.data import Dataset
@@ -13,7 +13,8 @@ class AudioDataset(Dataset):
         self,
         audio_samples_dir: Path,
         audio_gts_dir: Path,
-        duration: Optional[float] = 2.0,
+        duration: Optional[float] = 2.56,
+        metadata: Optional[Dict] = None,
     ):
         """Initialize AudioDataset.
 
@@ -32,6 +33,7 @@ class AudioDataset(Dataset):
         self.audio_samples = sorted(audio_samples, key=lambda p: p.name)
         self.audio_gts_dir = Path(audio_gts_dir)
         self.duration = duration
+        self.metadata = metadata if metadata is not None else {}
 
     def __len__(self):
         """Return length of dataset."""
@@ -42,9 +44,13 @@ class AudioDataset(Dataset):
         sample = self.audio_samples[idx]
         gt: Path = self.audio_gts_dir / sample.name
         assert gt.exists(), "Ground truth audio file does not exist."
+        start_sec = float(
+            self.metadata.get(gt.stem, 0)
+        )  # this is where sample starts in gt
 
         sample_audio, sample_audio_sr = load(sample)
         gt_audio, gt_audio_sr = load(gt)
+        gt_audio = gt_audio[..., int(start_sec * gt_audio_sr) :]
 
         sample_audio = pad(
             sample_audio,

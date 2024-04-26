@@ -293,6 +293,7 @@ class EvaluationMetrics:
             pipeline.rhythm_similarity.afps,
             self.cfg.verbose,
             self.metadata,
+            pipeline.spectral_contrast_similarity.duration,
         )
         self.results["spectral_contrast_similarity"] = score
         return score
@@ -312,6 +313,7 @@ class EvaluationMetrics:
             pipeline.rhythm_similarity.afps,
             self.cfg.verbose,
             self.metadata,
+            pipeline.rhythm_similarity.duration,
         )
         self.results["rhythm_similarity"] = score
         return score
@@ -331,6 +333,7 @@ class EvaluationMetrics:
             pipeline.zcr.afps,
             self.cfg.verbose,
             self.metadata,
+            pipeline.zcr.duration,
         )
         self.results["zcr"] = score
         return score
@@ -399,6 +402,7 @@ class EvaluationMetrics:
                 audio_gts_dir=self.cfg.gt_directory.as_posix(),
                 audio_samples_dir=self.cfg.sample_directory.as_posix(),
                 verbose=self.cfg.verbose,
+                metadata=self.metadata,
                 **asdict(pipeline.kld),
             )
         self.results["kld"] = float(score)

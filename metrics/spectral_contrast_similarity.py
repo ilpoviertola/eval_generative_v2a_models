@@ -43,11 +43,10 @@ def calculate_spectral_contrast_similarity(
         min_columns = min(
             gt_spectral_contrast.shape[1], sample_spectral_contrast.shape[1]
         )
+        sample_spectral_contrast = sample_spectral_contrast[:, :min_columns]
+        gt_spectral_contrast = gt_spectral_contrast[:, :min_columns]
         spectral_contrast_similarity = np.mean(
-            np.abs(
-                sample_spectral_contrast[:, :min_columns]
-                - gt_spectral_contrast[:, :min_columns]
-            )
+            np.abs(sample_spectral_contrast - gt_spectral_contrast)
         )
         normalized_spectral_contrast_similarity = spectral_contrast_similarity / np.max(
             [np.abs(gt_spectral_contrast), np.abs(sample_spectral_contrast)]
