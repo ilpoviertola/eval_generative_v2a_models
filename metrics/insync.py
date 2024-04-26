@@ -89,7 +89,9 @@ def calculate_insync(
     insync_samples = 0
     original_video_dir = Path(samples).parts[-1]
     assert len(videos), f"No videos found in {samples}... Problems with reencoding?"
-    for i, vid_path in tqdm(enumerate(videos), desc="Calculating InSync"):
+    for i, vid_path in tqdm(
+        enumerate(videos), desc="Calculating InSync", total=len(videos)
+    ):
         vid_path_str = vid_path.as_posix()
         # load visual and audio streams
         # (Tv, 3, H, W) in [0, 255], (Ta, C) in [-1, 1]

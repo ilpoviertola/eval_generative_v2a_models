@@ -70,7 +70,9 @@ def calculate_avclip_score(
     videos = list(generated_videos_path.glob("*.mp4"))
     original_video_dir = Path(samples).parts[-1]
     assert len(videos), f"No videos found in {samples}... Problems with reencoding?"
-    for i, vid_path in tqdm(enumerate(videos), desc="Calculating AVClip score"):
+    for i, vid_path in tqdm(
+        enumerate(videos), desc="Calculating AVClip score", total=len(videos)
+    ):
         vid_path_str = vid_path.as_posix()
         # load visual and audio streams
         # (Tv, 3, H, W) in [0, 255], (Ta, C) in [-1, 1]

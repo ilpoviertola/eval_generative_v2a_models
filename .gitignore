@@ -34,6 +34,7 @@ env2/
 logs/
 *.log
 vis/
+encoding_comparison_results/
 
 # OS generated files
 .DS_Store
