@@ -4,12 +4,16 @@ import warnings
 from pathlib import Path
 from datetime import datetime
 import yaml
+import csv
 
 from configs.evaluation_cfg import EvaluationCfg
 from metrics.fad import calculate_fad
 from metrics.kld import calculate_kld
 from metrics.insync import calculate_insync
 from metrics.avclip_score import calculate_avclip_score
+from metrics.zcr import calculate_zcr
+from metrics.rhythm_similarity import calculate_rhythm_similarity
+from metrics.spectral_contrast_similarity import calculate_spectral_contrast_similarity
 from eval_utils.file_utils import (
     rmdir_and_contents,
     extract_audios_from_video_dir_if_needed,
@@ -45,10 +49,21 @@ class EvaluationMetrics:
         self.cfg = cfg
         self.results: tp.Dict[str, tp.Any] = {}
         self.directory_info: tp.Dict[str, tp.Any] = {}
+        self.metadata = self._read_metadata()
         if not inited_from_file:
             self.update_last_calculated_ts()
             self.clean_sample_directory()
             self.resolve_directories()
+
+    def _read_metadata(self) -> tp.Union[None, tp.Dict[str, tp.Any]]:
+        if self.cfg.metadata is not None:
+            with open(self.cfg.metadata, "r") as f:
+                reader = csv.reader(f)
+                next(reader)
+                metadata = {row[0]: row[1] for row in reader}
+        else:
+            metadata = None
+        return metadata
 
     def clean_sample_directory(self) -> None:
         """Move some files that might be in the sample directory to a subdirectory"""
@@ -169,6 +184,54 @@ class EvaluationMetrics:
                     f"{pipeline.fad.sample_rate}afps": (sample_audios, True)
                 }
 
+        if (
+            pipeline.zcr is not None
+            or pipeline.rhythm_similarity is not None
+            or pipeline.spectral_contrast_similarity is not None
+        ):
+            print(
+                "Extracting audio for ZCR, Rhythm Similarity or Spectral Contrast Similarity..."
+            )
+            # check does gt directory have audio already extracted
+            if len(list(self.cfg.gt_directory.glob("*.wav"))) == len(
+                list(self.cfg.gt_directory.glob("*.mp4"))
+            ):
+                print("audios already extracted for GT")
+                gt_audios = self.cfg.gt_directory
+            else:
+                sr = (
+                    pipeline.zcr.afps
+                    if pipeline.zcr is not None
+                    else (
+                        pipeline.rhythm_similarity.afps
+                        if pipeline.rhythm_similarity is not None
+                        else pipeline.spectral_contrast_similarity.afps
+                    )
+                )
+                gt_audios, _ = extract_audios_from_video_dir_if_needed(
+                    self.cfg.gt_directory,
+                    sr,
+                    True,
+                    self.cfg.gt_directory,
+                )
+                self.directory_info["gt_audios"] = {f"{sr}afps": (gt_audios, False)}
+
+            # copy ground truths of sample audios to a new directory
+            sample_audio_gt_dir = gt_audios / "sample_subset"
+            if sample_audio_gt_dir.exists():
+                rmdir_and_contents(sample_audio_gt_dir, verbose=self.cfg.verbose)
+            sample_audio_gt_dir.mkdir(exist_ok=True)
+            for sample_audio in self.cfg.sample_directory.iterdir():
+                fn = sample_audio.name
+                if fn.endswith(".wav"):
+                    assert (
+                        gt_audios / fn
+                    ).exists(), f"GT audio {gt_audios / fn} not found"
+                    (sample_audio_gt_dir / fn).resolve().symlink_to(
+                        self.cfg.gt_directory / fn
+                    )
+            self.directory_info["gts_for_sample_audios"] = (sample_audio_gt_dir, True)
+
     def remove_resampled_directories(self) -> None:
         """Remove the resampled directories if they were created"""
         if "sample_audios" in self.directory_info:
@@ -187,6 +250,12 @@ class EvaluationMetrics:
             ].items():
                 if resampled:
                     rmdir_and_contents(gen_dir, verbose=self.cfg.verbose)
+        if "gts_for_sample_audios" in self.directory_info:
+            gts_for_sample_audios_dir, resampled = self.directory_info[
+                "gts_for_sample_audios"
+            ]
+            if resampled:
+                rmdir_and_contents(gts_for_sample_audios_dir, verbose=self.cfg.verbose)
 
     def run_all(self, force_recalculate: bool = False) -> None:
         pipeline = self.cfg.pipeline
@@ -198,6 +267,73 @@ class EvaluationMetrics:
             self.run_insync(force_recalculate)
         if pipeline.avclip_score is not None:
             self.run_avclip_score(force_recalculate)
+        if pipeline.zcr is not None:
+            self.run_zcr(force_recalculate)
+        if pipeline.rhythm_similarity is not None:
+            self.run_rhythm_similarity(force_recalculate)
+        if pipeline.spectral_contrast_similarity is not None:
+            self.run_spectral_contrast_similarity(force_recalculate)
+
+    def run_spectral_contrast_similarity(
+        self, force_recalculate: bool = False
+    ) -> float:
+        pipeline = self.cfg.pipeline
+        if pipeline.spectral_contrast_similarity is None:
+            raise ValueError(
+                "No SpectralContrastSimilarity configuration found in pipeline"
+            )
+        if "spectral_contrast_similarity" in self.results and not force_recalculate:
+            print("Spectral contrast similarity already calculated, skipping...")
+            return self.results["spectral_contrast_similarity"]
+
+        self.update_last_calculated_ts()
+        score = calculate_spectral_contrast_similarity(
+            self.cfg.sample_directory,
+            self.directory_info["gts_for_sample_audios"][0],
+            pipeline.rhythm_similarity.afps,
+            self.cfg.verbose,
+            self.metadata,
+        )
+        self.results["spectral_contrast_similarity"] = score
+        return score
+
+    def run_rhythm_similarity(self, force_recalculate: bool = False) -> float:
+        pipeline = self.cfg.pipeline
+        if pipeline.rhythm_similarity is None:
+            raise ValueError("No RhythmSimilarity configuration found in pipeline")
+        if "rhythm_similarity" in self.results and not force_recalculate:
+            print("Rhythm similarity already calculated, skipping...")
+            return self.results["rhythm_similarity"]
+
+        self.update_last_calculated_ts()
+        score = calculate_rhythm_similarity(
+            self.cfg.sample_directory,
+            self.directory_info["gts_for_sample_audios"][0],
+            pipeline.rhythm_similarity.afps,
+            self.cfg.verbose,
+            self.metadata,
+        )
+        self.results["rhythm_similarity"] = score
+        return score
+
+    def run_zcr(self, force_recalculate: bool = False) -> float:
+        pipeline = self.cfg.pipeline
+        if pipeline.zcr is None:
+            raise ValueError("No ZCR configuration found in pipeline")
+        if "zcr" in self.results and not force_recalculate:
+            print("ZCR already calculated, skipping...")
+            return self.results["zcr"]
+
+        self.update_last_calculated_ts()
+        score = calculate_zcr(
+            self.cfg.sample_directory,
+            self.directory_info["gts_for_sample_audios"][0],
+            pipeline.zcr.afps,
+            self.cfg.verbose,
+            self.metadata,
+        )
+        self.results["zcr"] = score
+        return score
 
     def run_avclip_score(self, force_recalculate: bool = False) -> float:
         pipeline = self.cfg.pipeline

@@ -60,11 +60,32 @@ class AVClipScoreCfg:
 
 
 @dataclass
+class ZCRCfg:
+    afps: int = 24_000
+    sample_size: int = 10_000
+
+
+@dataclass
+class RhythmSimilarityCfg:
+    afps: int = 24_000
+    sample_size: int = 10_000
+
+
+@dataclass
+class SpectralContrastSimilarityCfg:
+    afps: int = 24_000
+    sample_size: int = 10_000
+
+
+@dataclass
 class PipelineCfg:
     fad: FADCfg = None
     kld: KLDCfg = None
     insync: InSyncCfg = None
     avclip_score: AVClipScoreCfg = None
+    zcr: ZCRCfg = None
+    rhythm_similarity: RhythmSimilarityCfg = None
+    spectral_contrast_similarity: SpectralContrastSimilarityCfg = None
 
 
 @dataclass
@@ -77,6 +98,8 @@ class EvaluationCfg:
     pipeline: PipelineCfg
     # ground truth data (.wav)
     gt_directory: Path
+    # metadata
+    metadata: tp.Optional[Path] = None
     # directories to save evaluation results
     result_directory: tp.Optional[Path] = None
     verbose: bool = False
@@ -102,6 +125,7 @@ class EvaluationCfg:
         print(f"id: {self.id}")
         print(f"sample_directory: {self.sample_directory}")
         print(f"gt_directory: {self.gt_directory}")
+        print(f"metadata: {self.metadata}")
         print(f"result_directory: {self.result_directory}")
         print(self.pipeline)
         print(f"verbose: {self.verbose}")
