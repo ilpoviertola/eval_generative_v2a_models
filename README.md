@@ -11,7 +11,7 @@ This section walks you through the process of evaluating a generative v2a model.
 First, you need to install the required environment. You can do this by running the following command:
 
 ```bash
-conda env create -f conda_env.yaml
+conda env create -f conda_env_cu12.1.yaml
 ```
 
 Also, [AudioTools by Descript Inc.](https://github.com/descriptinc/audiotools) is needed for audio processing and PASST model for metrics. You can install them by running the following commands:
@@ -29,13 +29,6 @@ This evaluation pipeline uses [Synchformer](https://github.com/v-iashin/Synchfor
 bash ./checkpoints/download_synchformer_checkpoints.sh
 ```
 
-### 3. Make sure the data is available in the correct format
-
-Video data is expected to have the following format:
-
-- 25 fps, H.264 codec
-- 24000 Hz, AAC codec
-
-### 4. Run the evaluation pipeline
+### 3. Run the evaluation pipeline
 
 Use run_evaluations.ipynb to run the pipeline. All the required steps are described in the notebook.

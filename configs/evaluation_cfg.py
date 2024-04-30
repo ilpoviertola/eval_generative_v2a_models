@@ -78,6 +78,13 @@ class SpectralContrastSimilarityCfg:
 
 
 @dataclass
+class ImageBindScore:
+    device: str = "cuda:0"
+    afps: int = 16_000
+    get_diagonal_scores: bool = True
+
+
+@dataclass
 class PipelineCfg:
     fad: FADCfg = None
     kld: KLDCfg = None
@@ -86,6 +93,7 @@ class PipelineCfg:
     zcr: ZCRCfg = None
     rhythm_similarity: RhythmSimilarityCfg = None
     spectral_contrast_similarity: SpectralContrastSimilarityCfg = None
+    imagebind_score: ImageBindScore = None
 
 
 @dataclass

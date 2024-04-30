@@ -14,6 +14,7 @@ from metrics.avclip_score import calculate_avclip_score
 from metrics.zcr import calculate_zcr
 from metrics.rhythm_similarity import calculate_rhythm_similarity
 from metrics.spectral_contrast_similarity import calculate_spectral_contrast_similarity
+from metrics.imagebind_score import calculate_imagebind_score
 from eval_utils.file_utils import (
     rmdir_and_contents,
     extract_audios_from_video_dir_if_needed,
@@ -85,22 +86,20 @@ class EvaluationMetrics:
             - AVCLIP: Only generated videos, 16 000 Hz, 25 fps, 256x256
         """
         pipeline = self.cfg.pipeline
-        if pipeline.insync is not None or pipeline.avclip_score is not None:
-            print("Reencoding videos for InSync and AVCLIP scores...")
-            vfps = (
-                pipeline.insync.vfps
-                if pipeline.insync is not None
-                else pipeline.avclip_score.vfps
+        if (
+            pipeline.insync is not None
+            or pipeline.avclip_score is not None
+            or pipeline.imagebind_score is not None
+        ):
+            print("Reencoding videos for InSync, AVCLIP and ImageBind scores...")
+            vfps = self.get_config_value_across_pipelines(
+                ["insync", "avclip_score", "imagebind_score"], "vfps", 25
             )
-            afps = (
-                pipeline.insync.afps
-                if pipeline.insync is not None
-                else pipeline.avclip_score.afps
+            afps = self.get_config_value_across_pipelines(
+                ["insync", "avclip_score", "imagebind_score"], "afps"
             )
-            input_size = (
-                pipeline.insync.input_size
-                if pipeline.insync is not None
-                else pipeline.avclip_score.input_size
+            input_size = self.get_config_value_across_pipelines(
+                ["insync", "avclip_score", "imagebind_score"], "input_size", 224
             )
 
             # reencode the generated videos if needed
@@ -199,14 +198,8 @@ class EvaluationMetrics:
                 print("audios already extracted for GT")
                 gt_audios = self.cfg.gt_directory
             else:
-                sr = (
-                    pipeline.zcr.afps
-                    if pipeline.zcr is not None
-                    else (
-                        pipeline.rhythm_similarity.afps
-                        if pipeline.rhythm_similarity is not None
-                        else pipeline.spectral_contrast_similarity.afps
-                    )
+                sr = self.get_config_value_across_pipelines(
+                    ["zcr", "rhythm_similarity", "spectral_contrast_similarity"], "afps"
                 )
                 gt_audios, _ = extract_audios_from_video_dir_if_needed(
                     self.cfg.gt_directory,
@@ -273,6 +266,27 @@ class EvaluationMetrics:
             self.run_rhythm_similarity(force_recalculate)
         if pipeline.spectral_contrast_similarity is not None:
             self.run_spectral_contrast_similarity(force_recalculate)
+        if pipeline.imagebind_score is not None:
+            self.run_imagebind_score(force_recalculate)
+
+    def run_imagebind_score(self, force_recalculate: bool = False) -> float:
+        pipeline = self.cfg.pipeline
+        if pipeline.imagebind_score is None:
+            raise ValueError("No ImageBindScore configuration found in pipeline")
+        if "imagebind_score" in self.results and not force_recalculate:
+            print("ImageBindScore already calculated, skipping...")
+            return self.results["imagebind_score"]
+
+        self.update_last_calculated_ts()
+        score = calculate_imagebind_score(
+            self.cfg.sample_directory,
+            pipeline.imagebind_score.device,
+            pipeline.imagebind_score.get_diagonal_scores,
+            pipeline.imagebind_score.afps,
+            self.cfg.verbose,
+        )
+        self.results["imagebind_score"] = score
+        return score
 
     def run_spectral_contrast_similarity(
         self, force_recalculate: bool = False
@@ -510,6 +524,38 @@ class EvaluationMetrics:
 
     def update_last_calculated_ts(self) -> None:
         self.ts = self._get_current_timestamp()
+
+    def get_config_value_across_pipelines(
+        self, pipeline_keys: tp.List[str], key: str, default_value: tp.Any = None
+    ) -> tp.Any:
+        """Some configurations share same key/value pairs across different pipelines.
+        This function helps to get the value of a key that is shared across multiple pipelines.
+
+        In case the key is not found in any of the pipelines, a ValueError is raised or
+        the default_value is returned.
+
+        NOTE: The first pipeline in the list has the highest priority. It is assumed that the
+        pipelines share the same key/value pairs.
+
+        Args:
+            pipeline_keys (tp.List[str]): List of pipeline names where to look for the key
+            key (str): Key to look for
+            default_value (tp.Any, optional): Default value to return if key is not found. Defaults to None.
+
+        Raises:
+            ValueError: Key not found
+
+        Returns:
+            tp.Any: Value of the key (or default value if not found)
+        """
+        for pipeline_key in pipeline_keys:
+            if hasattr(self.cfg.pipeline, pipeline_key):
+                pipeline = getattr(self.cfg.pipeline, pipeline_key)
+                if hasattr(pipeline, key):
+                    return getattr(pipeline, key)
+        if default_value is not None:
+            return default_value
+        raise ValueError(f"Key {key} not found in any of the pipelines")
 
     @staticmethod
     def _get_current_timestamp() -> str:
