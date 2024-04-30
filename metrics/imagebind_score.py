@@ -1,10 +1,8 @@
-import typing as tp
 from pathlib import Path
 
 import torch
 import numpy as np
 from tqdm import tqdm
-from torchmetrics.functional import pairwise_cosine_similarity
 
 from submodules.ImageBind.imagebind.data import (
     load_and_transform_video_data,
@@ -60,12 +58,6 @@ def calculate_imagebind_score(
             embeddings[ModalityType.VISION] @ embeddings[ModalityType.AUDIO].T, dim=1
         )
         sim_scores = sim_scores.cpu().numpy()
-
-        cos_sim = pairwise_cosine_similarity(
-            embeddings[ModalityType.VISION],
-            embeddings[ModalityType.AUDIO],
-            reduction=None,
-        )
 
         if get_diagonal_scores:
             running_score += np.sum(sim_scores.diagonal())
