@@ -3,7 +3,7 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 import torch
-from torchmetrics.regression import CosineSimilarity
+from torchmetrics.functional import pairwise_cosine_similarity
 from submodules.Synchformer.utils.utils import check_if_file_exists_else_download
 from submodules.Synchformer.dataset.dataset_utils import get_video_and_audio
 from submodules.Synchformer.scripts.train_utils import (
@@ -62,8 +62,7 @@ def calculate_avclip_score(
     model.eval()
     transforms = get_transforms(model_cfg, ["test"])["test"]
 
-    # init the metric
-    cos_sim = CosineSimilarity(reduction="mean")
+    # init the metric results
     results: List[float] = []
 
     batch = []
@@ -78,6 +77,7 @@ def calculate_avclip_score(
         # (Tv, 3, H, W) in [0, 255], (Ta, C) in [-1, 1]
         rgb, audio, meta = get_video_and_audio(vid_path_str, get_meta=True)
         rgb, audio = repeat_video(rgb, audio, vfps, afps, model_cfg.data.crop_len_sec)
+        audio = torch.rand_like(audio)  # dummy audio
         item = {
             "video": rgb,
             "audio": audio,
@@ -105,7 +105,7 @@ def calculate_avclip_score(
             print(f"Error while transforming {vid_path_str}: {e}")
             continue
         batch.append(item)
-        if len(batch) == 3 or i == len(videos) - 1:
+        if len(batch) == 1 or i == len(videos) - 1:
             # prepare inputs for inference
             batch = torch.utils.data.default_collate(batch)
             aud, vid, targets = prepare_inputs(batch, device)
@@ -124,7 +124,14 @@ def calculate_avclip_score(
                 B, S, D = vis.shape
                 vis = vis.view(B * S, D)
                 aud = aud.view(B * S, D)
-            results.append(cos_sim(vis, aud).item())
+            # gather similarity scores of corresponding pairs
+            results += torch.diag(
+                pairwise_cosine_similarity(
+                    vis,
+                    aud,
+                    reduction=None,
+                )
+            ).tolist()
 
             batch = []
 
