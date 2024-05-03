@@ -81,7 +81,7 @@ class SpectralContrastSimilarityCfg:
 class ImageBindScore:
     device: str = "cuda:0"
     afps: int = 16_000
-    get_diagonal_scores: bool = True
+    get_diagonal_scores: bool = False
 
 
 @dataclass

@@ -68,4 +68,4 @@ def calculate_rhythm_similarity(
     if verbose:
         print(f"Rhythm similarity: {total_rhythm_similarity / count}")
 
-    return total_rhythm_similarity / count
+    return float(total_rhythm_similarity / count)

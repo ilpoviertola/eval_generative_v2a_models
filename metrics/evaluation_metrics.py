@@ -491,6 +491,11 @@ class EvaluationMetrics:
             if cfg["result_directory"] is not None
             else None
         )
+        cfg["metadata"] = (
+            cfg["metadata"].resolve().as_posix()
+            if cfg["metadata"] is not None
+            else None
+        )
 
         exported_data = {
             "id": self.cfg.id,

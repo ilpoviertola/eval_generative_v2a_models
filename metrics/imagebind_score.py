@@ -70,4 +70,4 @@ def calculate_imagebind_score(
     score = running_score / len(all_videos)
     if verbose:
         print("ImageBind score:", score)
-    return score
+    return float(score)

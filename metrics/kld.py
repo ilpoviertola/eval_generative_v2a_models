@@ -12,16 +12,182 @@ import logging
 import os
 import typing as tp
 from pathlib import Path
+from copy import deepcopy
 
 import torch
 from torch.utils.data import DataLoader
 import torchmetrics
 from tqdm import tqdm
+from hear21passt.models.preprocess import AugmentMelSTFT
+from hear21passt.models.passt import passt_s_swa_p16_128_ap476
+from hear21passt.wrapper import PasstBasicWrapper
+from hear21passt.models.passt import PaSST, checkpoint_filter_fn, default_cfgs
+from hear21passt.models.helpers.vit_helpers import update_default_cfg_and_kwargs
+from timm.models.helpers import load_pretrained
 
 from eval_utils.file_utils import convert_audio, extract_audios_from_video_dir_if_needed
 from eval_utils.dataset import AudioDataset
 
 logger = logging.getLogger(__name__)
+
+
+# START: To make the code work with the latest version of timm
+
+
+def build_model_with_cfg(
+    model_cls,
+    variant: str,
+    pretrained: bool,
+    default_cfg: dict,
+    model_cfg=None,
+    feature_cfg=None,
+    pretrained_strict: bool = True,
+    pretrained_filter_fn=None,
+    pretrained_custom_load=False,
+    kwargs_filter=None,
+    **kwargs,
+):
+    """Build model with specified default_cfg and optional model_cfg
+
+    This helper fn aids in the construction of a model including:
+      * handling default_cfg and associated pretained weight loading
+      * passing through optional model_cfg for models with config based arch spec
+      * features_only model adaptation
+      * pruning config / model adaptation
+
+    Args:
+        model_cls (nn.Module): model class
+        variant (str): model variant name
+        pretrained (bool): load pretrained weights
+        default_cfg (dict): model's default pretrained/task config
+        model_cfg (Optional[Dict]): model's architecture config
+        feature_cfg (Optional[Dict]: feature extraction adapter config
+        pretrained_strict (bool): load pretrained weights strictly
+        pretrained_filter_fn (Optional[Callable]): filter callable for pretrained weights
+        pretrained_custom_load (bool): use custom load fn, to load numpy or other non PyTorch weights
+        kwargs_filter (Optional[Tuple]): kwargs to filter before passing to model
+        **kwargs: model args passed through to model __init__
+    """
+    pruned = kwargs.pop("pruned", False)
+    features = False
+    feature_cfg = feature_cfg or {}
+    default_cfg = deepcopy(default_cfg) if default_cfg else {}
+    update_default_cfg_and_kwargs(default_cfg, kwargs, kwargs_filter)
+    default_cfg.setdefault("architecture", variant)
+
+    # Setup for feature extraction wrapper done at end of this fn
+    if kwargs.pop("features_only", False):
+        features = True
+        feature_cfg.setdefault("out_indices", (0, 1, 2, 3, 4))
+        if "out_indices" in kwargs:
+            feature_cfg["out_indices"] = kwargs.pop("out_indices")
+
+    # Build the model
+    model = (
+        model_cls(**kwargs) if model_cfg is None else model_cls(cfg=model_cfg, **kwargs)
+    )
+    model.pretrained_cfg = default_cfg
+
+    # For classification models, check class attr, then kwargs, then default to 1k, otherwise 0 for feats
+    num_classes_pretrained = (
+        0
+        if features
+        else getattr(model, "num_classes", kwargs.get("num_classes", 1000))
+    )
+    if pretrained:
+        if pretrained_custom_load:
+            raise NotImplementedError(
+                "Custom pretrained weight loading not yet supported"
+            )
+        else:
+            load_pretrained(
+                model,
+                num_classes=num_classes_pretrained,
+                in_chans=kwargs.get("in_chans", 3),
+                filter_fn=pretrained_filter_fn,
+                strict=pretrained_strict,
+            )
+    return model
+
+
+def _create_vision_transformer(variant, pretrained=False, default_cfg=None, **kwargs):
+    default_cfg = default_cfg or default_cfgs[variant]
+    if kwargs.get("features_only", None):
+        raise RuntimeError(
+            "features_only not implemented for Vision Transformer models."
+        )
+
+    # NOTE this extra code to support handling of repr size for in21k pretrained models
+    default_num_classes = default_cfg["num_classes"]
+    num_classes = kwargs.get("num_classes", default_num_classes)
+    repr_size = kwargs.pop("representation_size", None)
+    if repr_size is not None and num_classes != default_num_classes:
+        # Remove representation layer if fine-tuning. This may not always be the desired action,
+        # but I feel better than doing nothing by default for fine-tuning. Perhaps a better interface?
+        print("Removing representation layer for fine-tuning.")
+        repr_size = None
+
+    model = build_model_with_cfg(
+        PaSST,
+        variant,
+        pretrained,
+        default_cfg=default_cfg,
+        representation_size=repr_size,
+        pretrained_filter_fn=checkpoint_filter_fn,
+        pretrained_custom_load="npz" in default_cfg["url"],
+        **kwargs,
+    )
+    return model
+
+
+def passt_s_swa_p16_128_ap476(pretrained=False, **kwargs):
+    """DeiT-base distilled model @ 384x384 from paper (https://arxiv.org/abs/2012.12877).
+    ImageNet-1k weights from https://github.com/facebookresearch/deit.
+    """
+    print("\n\n Loading PASST TRAINED ON AUDISET \n\n")
+    model_kwargs = dict(patch_size=16, embed_dim=768, depth=12, num_heads=12, **kwargs)
+    model = _create_vision_transformer(
+        "passt_s_swa_p16_128_ap476",
+        pretrained=pretrained,
+        distilled=True,
+        **model_kwargs,
+    )
+    return model
+
+
+def get_basic_model_10s(**kwargs):
+    mel = AugmentMelSTFT(
+        n_mels=128,
+        sr=32000,
+        win_length=800,
+        hopsize=320,
+        n_fft=1024,
+        freqm=48,
+        timem=192,
+        htk=False,
+        fmin=0.0,
+        fmax=None,
+        norm=1,
+        fmin_aug_range=10,
+        fmax_aug_range=2000,
+    )
+
+    net = passt_s_swa_p16_128_ap476(
+        pretrained=True,
+        num_classes=527,
+        in_chans=1,
+        stride=(10, 10),
+        img_size=(128, 998),
+        u_patchout=0,
+        s_patchout_t=0,
+        s_patchout_f=0,
+        default_cfg=None,
+    )
+    model = PasstBasicWrapper(mel=mel, net=net, **kwargs)
+    return model
+
+
+# END: To make the code work with the latest version of timm
 
 
 class _patch_passt_stft:
@@ -176,7 +342,8 @@ class PasstKLDivergenceMetric(KLDivergenceMetric):
 
                 max_duration = 20
             else:
-                from hear21passt.base import get_basic_model  # type: ignore
+                get_basic_model = get_basic_model_10s
+                # from hear21passt.base import get_basic_model  # type: ignore
 
                 # Original PASST was trained on AudioSet with 10s-long audio samples
                 max_duration = 10
@@ -191,6 +358,7 @@ class PasstKLDivergenceMetric(KLDivergenceMetric):
         max_input_frames = int(max_duration * model_sample_rate)
         min_input_frames = int(min_duration * model_sample_rate)
         with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+            # FIXME: The weights are not loaded since default_cfg has been changed to pretrained_cfg...
             model = get_basic_model(mode="logits")
         return model, model_sample_rate, max_input_frames, min_input_frames
 

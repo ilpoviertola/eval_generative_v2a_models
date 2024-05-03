@@ -59,4 +59,4 @@ def calculate_spectral_contrast_similarity(
             f"Spectral contrast similarity: {total_spectral_contrast_similarity / count}"
         )
 
-    return total_spectral_contrast_similarity / count
+    return float(total_spectral_contrast_similarity / count)

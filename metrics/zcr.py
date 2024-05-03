@@ -43,4 +43,4 @@ def calculate_zcr(
     if verbose:
         print(f"ZCR similarity: {total_zcr_similarity / count}")
 
-    return total_zcr_similarity / count
+    return float(total_zcr_similarity / count)
