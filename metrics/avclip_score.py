@@ -73,33 +73,35 @@ def calculate_avclip_score(
         enumerate(videos), desc="Calculating AVClip score", total=len(videos)
     ):
         vid_path_str = vid_path.as_posix()
-        # load visual and audio streams
-        # (Tv, 3, H, W) in [0, 255], (Ta, C) in [-1, 1]
-        rgb, audio, meta = get_video_and_audio(vid_path_str, get_meta=True)
-        rgb, audio = repeat_video(rgb, audio, vfps, afps, model_cfg.data.crop_len_sec)
-        audio = torch.rand_like(audio)  # dummy audio
-        item = {
-            "video": rgb,
-            "audio": audio,
-            "meta": meta,
-            "path": f"{original_video_dir}/{vid_path.name}",
-            "split": "test",
-            "targets": {
-                # setting the start of the visual crop and the offset size.
-                # For instance, if the model is trained on 5sec clips, the provided video is 9sec, and `v_start_i_sec=1.3`
-                # the transform will crop out a 5sec-clip from 1.3 to 6.3 seconds and shift the start of the audio
-                # track by `args.offset_sec` seconds. It means that if `offset_sec` > 0, the audio will
-                # start `offset_sec` earlier than the rgb track.
-                # It is a good idea to use something in [-`max_off_sec`, `max_off_sec`] (see `grid`)
-                "v_start_i_sec": 0,
-                "offset_sec": 0,
-                # dummy values -- don't mind them
-                "vggsound_target": 0,
-                "vggsound_label": "PLACEHOLDER",
-            },
-        }
-        # applying the transform
         try:
+            # load visual and audio streams
+            # (Tv, 3, H, W) in [0, 255], (Ta, C) in [-1, 1]
+            rgb, audio, meta = get_video_and_audio(vid_path_str, get_meta=True)
+            rgb, audio = repeat_video(
+                rgb, audio, vfps, afps, model_cfg.data.crop_len_sec
+            )
+            audio = torch.rand_like(audio)  # dummy audio
+            item = {
+                "video": rgb,
+                "audio": audio,
+                "meta": meta,
+                "path": f"{original_video_dir}/{vid_path.name}",
+                "split": "test",
+                "targets": {
+                    # setting the start of the visual crop and the offset size.
+                    # For instance, if the model is trained on 5sec clips, the provided video is 9sec, and `v_start_i_sec=1.3`
+                    # the transform will crop out a 5sec-clip from 1.3 to 6.3 seconds and shift the start of the audio
+                    # track by `args.offset_sec` seconds. It means that if `offset_sec` > 0, the audio will
+                    # start `offset_sec` earlier than the rgb track.
+                    # It is a good idea to use something in [-`max_off_sec`, `max_off_sec`] (see `grid`)
+                    "v_start_i_sec": 0,
+                    "offset_sec": 0,
+                    # dummy values -- don't mind them
+                    "vggsound_target": 0,
+                    "vggsound_label": "PLACEHOLDER",
+                },
+            }
+            # applying the transform
             item = transforms(item)
         except Exception as e:
             print(f"Error while transforming {vid_path_str}: {e}")

@@ -144,15 +144,19 @@ class EvaluationMetrics:
             else:
                 self.directory_info["fad"]["gt_embeddings"] = False
                 # extract audio from GT videos and sample it to desired frequency
-                if (self.cfg.gt_directory / "audio").exists():
+                if (
+                    self.cfg.gt_directory / f"audio_{pipeline.fad.sample_rate}"
+                ).exists():
                     print("audio directory already exists for GT")
-                    gt_audios = self.cfg.gt_directory / "audio"
+                    gt_audios = (
+                        self.cfg.gt_directory / f"audio_{pipeline.fad.sample_rate}"
+                    )
                 else:
                     gt_audios, _ = extract_audios_from_video_dir_if_needed(
                         self.cfg.gt_directory,
                         pipeline.fad.sample_rate,
                         True,
-                        self.cfg.gt_directory / "audio",
+                        self.cfg.gt_directory / f"audio_{pipeline.fad.sample_rate}",
                     )
                 self.directory_info["gt_audios"] = {
                     f"{pipeline.fad.sample_rate}afps": (gt_audios, True)
@@ -169,15 +173,19 @@ class EvaluationMetrics:
             else:
                 self.directory_info["fad"]["generated_embeddings"] = False
                 # extract audio from generated videos and sample it to desired frequency
-                if (self.cfg.sample_directory / "audio").exists():
+                if (
+                    self.cfg.sample_directory / f"audio_{pipeline.fad.sample_rate}"
+                ).exists():
                     print("audio directory already exists for generated samples")
-                    sample_audios = self.cfg.sample_directory / "audio"
+                    sample_audios = (
+                        self.cfg.sample_directory / f"audio_{pipeline.fad.sample_rate}"
+                    )
                 else:
                     sample_audios, _ = extract_audios_from_video_dir_if_needed(
                         self.cfg.sample_directory,
                         pipeline.fad.sample_rate,
                         True,
-                        self.cfg.sample_directory / "audio",
+                        self.cfg.sample_directory / f"audio_{pipeline.fad.sample_rate}",
                     )
                 self.directory_info["sample_audios"] = {
                     f"{pipeline.fad.sample_rate}afps": (sample_audios, True)
@@ -207,7 +215,14 @@ class EvaluationMetrics:
                     True,
                     self.cfg.gt_directory,
                 )
-                self.directory_info["gt_audios"] = {f"{sr}afps": (gt_audios, False)}
+                self.directory_info["gt_audios"] = (
+                    {f"{sr}afps": (gt_audios, False)}
+                    if "gt_audios" not in self.directory_info
+                    else {
+                        **self.directory_info["gt_audios"],
+                        f"{sr}afps": (gt_audios, False),
+                    }
+                )
 
             # copy ground truths of sample audios to a new directory
             sample_audio_gt_dir = gt_audios / "sample_subset"
