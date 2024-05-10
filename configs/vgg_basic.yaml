@@ -1,0 +1,14 @@
+id: VGG-basic
+sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-04-30T14-36-04/generated_samples_24-05-06T13-05-24
+gt_directory: /home/hdd/ilpo/datasets/vggsound/test_h264_video_25fps_256side_24000hz_aac
+metadata: /home/ilpo/repos/eval_generative_audio_models/data/vggsound_sparse.csv
+verbose: false
+pipeline:
+  avclip_score: {}
+  fad: {}
+  imagebind_score: {}
+  insync: {}
+  kld: {}
+  rhythm_similarity: {}
+  spectral_contrast_similarity: {}
+  zcr: {}

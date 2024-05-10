@@ -1,8 +1,10 @@
 import dataclasses
 from dataclasses import dataclass, Field, fields
-from pathlib import Path
+from pathlib import Path, PosixPath
 import typing as tp
 from warnings import warn
+
+from omegaconf import OmegaConf
 
 from eval_utils.utils import dataclass_from_dict
 from eval_utils.exceptions import ConfigurationError, ConfigurationWarning
@@ -118,6 +120,10 @@ class EvaluationCfg:
     verbose: bool = False
 
     def __post_init__(self):
+        self.sample_directory = Path(self.sample_directory)
+        self.gt_directory = Path(self.gt_directory)
+        self.metadata = Path(self.metadata) if self.metadata else None
+
         if not self.sample_directory.is_dir():
             raise ConfigurationError("sample_directory not existing directory")
 
@@ -154,7 +160,7 @@ class EvaluationCfg:
         print()
 
 
-def get_evaluation_config(eval_cfg_dict: dict) -> EvaluationCfg:
+def get_evaluation_config(eval_cfg_dict: tp.Union[dict, Path, str]) -> EvaluationCfg:
     """Method to get evaluation config from a dictionary.
 
     Args:
@@ -163,6 +169,11 @@ def get_evaluation_config(eval_cfg_dict: dict) -> EvaluationCfg:
     Returns:
         EvaluationCfg: Evaluation configuration object.
     """
+    if type(eval_cfg_dict) in [str, Path, PosixPath]:
+        eval_cfg_dict = OmegaConf.to_container(
+            OmegaConf.load(eval_cfg_dict), resolve=True
+        )
+    assert type(eval_cfg_dict) == dict
     _check_evaluation_cfg_dict(eval_cfg_dict)
     evaluation_cfg = dataclass_from_dict(EvaluationCfg, eval_cfg_dict)
     return evaluation_cfg

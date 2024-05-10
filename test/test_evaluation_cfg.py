@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(".")
 from configs.evaluation_cfg import get_evaluation_config, EvaluationCfg, PipelineCfg
 from eval_utils.exceptions import ConfigurationError, ConfigurationWarning
-from eval_utils.test_utils import sample_dirs, pipeline, gt_dir  # fixtures
+from eval_utils.test_utils import sample_dirs, pipeline, gt_dir, cfg_file  # fixtures
 
 
 def test_empty_init():
@@ -80,5 +80,11 @@ def test_init_evaluation_cfg(sample_dirs, pipeline, gt_dir):
         "pipeline": pipeline,
     }
     eval_cfg = get_evaluation_config(cfg)
+    assert type(eval_cfg) == EvaluationCfg, "EvaluationCfg init failed"
+    assert type(eval_cfg.pipeline) == PipelineCfg, "PipelineCfg init failed"
+
+
+def test_init_evaluation_cfg_from_file(cfg_file):
+    eval_cfg = get_evaluation_config(cfg_file)
     assert type(eval_cfg) == EvaluationCfg, "EvaluationCfg init failed"
     assert type(eval_cfg.pipeline) == PipelineCfg, "PipelineCfg init failed"

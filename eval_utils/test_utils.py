@@ -24,3 +24,8 @@ def gt_dir():
     return Path(
         "/home/hdd/ilpo/datasets/greatesthit/test_files-256_h264_video_25fps_256side_24000hz_aac_len_5_splitby_random"
     )
+
+
+@pytest.fixture
+def cfg_file():
+    return Path("configs/vgg_basic.yaml")
