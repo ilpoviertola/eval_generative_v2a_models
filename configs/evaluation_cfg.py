@@ -1,6 +1,11 @@
-from dataclasses import dataclass
+import dataclasses
+from dataclasses import dataclass, Field, fields
 from pathlib import Path
 import typing as tp
+from warnings import warn
+
+from eval_utils.utils import dataclass_from_dict
+from eval_utils.exceptions import ConfigurationError, ConfigurationWarning
 
 
 @dataclass
@@ -113,18 +118,27 @@ class EvaluationCfg:
     verbose: bool = False
 
     def __post_init__(self):
-        assert self.sample_directory.is_dir(), "sample_directory not existing directory"
+        if not self.sample_directory.is_dir():
+            raise ConfigurationError("sample_directory not existing directory")
 
-        if self.pipeline.fad is not None or self.pipeline.kld is not None:
-            assert (
-                self.gt_directory.is_dir()
-            ), "gt_directory must be a Path object to an existing directory"
+        if (
+            self.pipeline.fad is not None
+            or self.pipeline.kld is not None
+            or self.pipeline.zcr is not None
+            or self.pipeline.rhythm_similarity is not None
+            or self.pipeline.spectral_contrast_similarity is not None
+        ):
+            if not self.gt_directory.is_dir():
+                raise ConfigurationError(
+                    "gt_directory must be a Path object to an existing directory"
+                )
 
         if self.result_directory is None:
             self.result_directory = self.sample_directory
-        assert (
-            self.result_directory.is_dir()
-        ), "result_directory must be a Path object to an existing directory"
+        if not self.result_directory.is_dir():
+            raise ConfigurationError(
+                "result_directory must be a Path object to an existing directory"
+            )
 
         self._print_pipeline()
 
@@ -138,3 +152,84 @@ class EvaluationCfg:
         print(self.pipeline)
         print(f"verbose: {self.verbose}")
         print()
+
+
+def get_evaluation_config(eval_cfg_dict: dict) -> EvaluationCfg:
+    """Method to get evaluation config from a dictionary.
+
+    Args:
+        eval_cfg_dict (dict): Dictionary defining the evaluation configuration.
+
+    Returns:
+        EvaluationCfg: Evaluation configuration object.
+    """
+    _check_evaluation_cfg_dict(eval_cfg_dict)
+    evaluation_cfg = dataclass_from_dict(EvaluationCfg, eval_cfg_dict)
+    return evaluation_cfg
+
+
+def _check_evaluation_cfg_dict(eval_cfg_dict: dict):
+    """Method to check evaluation config dictionary. Highlights the errors in the
+    user defined configuration.
+
+    Note, this function does not check that directories exists etc. That is done in
+    the dataclass init.
+
+    Args:
+        eval_cfg_dict (dict): User defined evaluation configuration dictionary.
+
+    Raises:
+        AssertionError: If the evaluation configuration dictionary is not valid.
+    """
+
+    # check the main configuration
+    req_fields, all_fields = _get_dataclass_fields(EvaluationCfg)
+    dict_keys = set(eval_cfg_dict.keys())
+
+    missing_keys = req_fields - dict_keys
+    extra_keys = dict_keys - all_fields
+    if missing_keys:
+        raise ConfigurationError(f"EvaluationCfg missing keys: {missing_keys}")
+    if extra_keys:
+        raise ConfigurationError(f"EvaluationCfg has extra keys: {extra_keys}")
+
+    # check the pipeline configuration
+    _, all_fields = _get_dataclass_fields(PipelineCfg)
+    if not eval_cfg_dict["pipeline"]:
+        raise ConfigurationError(f"PipelineCfg is empty. No metrics configured.")
+
+    extra_keys = eval_cfg_dict["pipeline"].keys() - all_fields
+    if extra_keys:
+        raise ConfigurationError(f"PipelineCfg has extra keys: {extra_keys}")
+
+    # check individual metric configurations
+    for metric_name, metric_cfg in eval_cfg_dict["pipeline"].items():
+        if metric_cfg is None:
+            raise ConfigurationError(f"{metric_name} configuration is empty.")
+        metric_dataclass = _match_dataclass_field_name_to_type(metric_name, PipelineCfg)
+        req_fields, all_fields = _get_dataclass_fields(metric_dataclass)
+        dict_keys = set(metric_cfg.keys())
+
+        missing_keys = req_fields - dict_keys
+        extra_keys = dict_keys - all_fields
+        if missing_keys:
+            raise ConfigurationError(f"{metric_name} missing keys: {missing_keys}")
+        if extra_keys:
+            raise ConfigurationError(f"{metric_name} has extra keys: {extra_keys}")
+
+
+def _get_dataclass_fields(dataclass: tp.Type) -> tp.Tuple[tp.Set[str], tp.Set[str]]:
+    req_dataclass_fields = {f.name for f in fields(dataclass) if _is_required_field(f)}
+    all_dataclass_fields = {f.name for f in fields(dataclass)}
+    return req_dataclass_fields, all_dataclass_fields
+
+
+def _is_required_field(field: Field) -> bool:
+    return (
+        field.default == dataclasses.MISSING
+        and field.default_factory == dataclasses.MISSING
+    )
+
+
+def _match_dataclass_field_name_to_type(field_name: str, dataclass: tp.Type) -> tp.Type:
+    return next(f.type for f in fields(dataclass) if f.name == field_name)

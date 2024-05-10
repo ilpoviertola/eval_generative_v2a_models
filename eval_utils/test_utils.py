@@ -6,11 +6,8 @@ from pathlib import Path
 def sample_dirs():
     return [
         Path(
-            "/home/hdd/data/greatesthits/evaluation/23-12-22T09-12-38/generated_samples_24-01-05T11-55-13"
-        ),
-        Path(
-            "/home/hdd/data/greatesthits/evaluation/23-12-20T00-45-15/generated_samples_23-12-20T09-17-40"
-        ),
+            "/home/hdd/ilpo/checkpoints/synchronisonix/24-02-27T16-46-55/24-02-27T16-46-55/generated_samples_24-04-17T14-24-06"
+        )
     ]
 
 
@@ -20,3 +17,10 @@ def pipeline():
         "fad": {"model_name": "vggish"},
         "kld": {"pretrained_length": 10},
     }
+
+
+@pytest.fixture
+def gt_dir():
+    return Path(
+        "/home/hdd/ilpo/datasets/greatesthit/test_files-256_h264_video_25fps_256side_24000hz_aac_len_5_splitby_random"
+    )
