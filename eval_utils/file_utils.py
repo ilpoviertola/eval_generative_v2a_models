@@ -36,6 +36,13 @@ class AudioLoudnessNormalize(torch.nn.Module):
         return wav * gain[:, None, None]
 
 
+def check_is_file(file: Path, suffix: str = ".mp4"):
+    if file.is_file() and file.suffix == suffix:
+        return True
+    else:
+        return False
+
+
 def which_ffmpeg() -> str:
     """Determines the path to ffmpeg library
     Returns:
@@ -67,7 +74,17 @@ def get_new_path(
     return new_path
 
 
-def reencode_video(path, vfps, afps, min_side, new_path):
+def reencode_video(
+    path,
+    vfps,
+    afps,
+    min_side,
+    new_path,
+    acodec=ACODEC,
+    vcodec=VCODEC,
+    pix_fmt=PIX_FMT,
+    crf=CRF,
+):
     # reencode the original mp4: rescale, resample video and resample audio
     cmd = f"{which_ffmpeg()}"
     assert cmd != "", "activate an env with ffmpeg/ffprobe"
@@ -76,10 +93,10 @@ def reencode_video(path, vfps, afps, min_side, new_path):
     cmd += f" -i {path}"
     # 1) change fps, 2) resize: min(H,W)=MIN_SIDE (vertical vids are supported), 3) change audio framerate
     cmd += f" -vf fps={vfps},scale=iw*{min_side}/'min(iw,ih)':ih*{min_side}/'min(iw,ih)',crop='trunc(iw/2)'*2:'trunc(ih/2)'*2"
-    cmd += f" -vcodec {VCODEC} -pix_fmt {PIX_FMT} -crf {CRF}"
-    cmd += f" -acodec {ACODEC} -ar {afps} -ac 1"
+    cmd += f" -vcodec {vcodec} -pix_fmt {pix_fmt} -crf {crf}"
+    cmd += f" -acodec {acodec} -ar {afps} -ac 1"
     cmd += f" {new_path}"
-    if not new_path.exists():
+    if not Path(new_path).exists():
         subprocess.call(cmd.split())
 
 
@@ -385,6 +402,12 @@ def copy_files(source_dir: Path, destination_dir: Path, file_mask: str = "*.wav"
     for file in source_dir.glob(file_mask):
         shutil.copy(file, destination_dir / file.name)
     return destination_dir
+
+
+def copy_file(source: str, destination: str):
+    source_path = Path(source)
+    destination_path = Path(destination)
+    shutil.copy(source_path, destination_path)
 
 
 def reencode_videos_in_parallel(
