@@ -7,14 +7,6 @@ import yaml
 import csv
 
 from configs.evaluation_cfg import EvaluationCfg
-from metrics.fad import calculate_fad
-from metrics.kld import calculate_kld
-from metrics.insync import calculate_insync
-from metrics.avclip_score import calculate_avclip_score
-from metrics.zcr import calculate_zcr
-from metrics.rhythm_similarity import calculate_rhythm_similarity
-from metrics.spectral_contrast_similarity import calculate_spectral_contrast_similarity
-from metrics.imagebind_score import calculate_imagebind_score
 from eval_utils.file_utils import (
     rmdir_and_contents,
     extract_audios_from_video_dir_if_needed,
@@ -285,6 +277,8 @@ class EvaluationMetrics:
             self.run_imagebind_score(force_recalculate)
 
     def run_imagebind_score(self, force_recalculate: bool = False) -> float:
+        from metrics.imagebind_score import calculate_imagebind_score
+
         pipeline = self.cfg.pipeline
         if pipeline.imagebind_score is None:
             raise ValueError("No ImageBindScore configuration found in pipeline")
@@ -306,6 +300,10 @@ class EvaluationMetrics:
     def run_spectral_contrast_similarity(
         self, force_recalculate: bool = False
     ) -> float:
+        from metrics.spectral_contrast_similarity import (
+            calculate_spectral_contrast_similarity,
+        )
+
         pipeline = self.cfg.pipeline
         if pipeline.spectral_contrast_similarity is None:
             raise ValueError(
@@ -328,6 +326,8 @@ class EvaluationMetrics:
         return score
 
     def run_rhythm_similarity(self, force_recalculate: bool = False) -> float:
+        from metrics.rhythm_similarity import calculate_rhythm_similarity
+
         pipeline = self.cfg.pipeline
         if pipeline.rhythm_similarity is None:
             raise ValueError("No RhythmSimilarity configuration found in pipeline")
@@ -348,6 +348,8 @@ class EvaluationMetrics:
         return score
 
     def run_zcr(self, force_recalculate: bool = False) -> float:
+        from metrics.zcr import calculate_zcr
+
         pipeline = self.cfg.pipeline
         if pipeline.zcr is None:
             raise ValueError("No ZCR configuration found in pipeline")
@@ -368,6 +370,8 @@ class EvaluationMetrics:
         return score
 
     def run_avclip_score(self, force_recalculate: bool = False) -> float:
+        from metrics.avclip_score import calculate_avclip_score
+
         pipeline = self.cfg.pipeline
         if pipeline.avclip_score is None:
             raise ValueError("No AVCLIP score configuration found in pipeline")
@@ -392,6 +396,8 @@ class EvaluationMetrics:
     def run_insync(
         self, force_recalculate: bool = False
     ) -> tp.Tuple[float, tp.Dict[str, tp.Dict[str, tp.Union[int, float, None]]]]:
+        from metrics.insync import calculate_insync
+
         pipeline = self.cfg.pipeline
         if pipeline.insync is None:
             raise ValueError("No InSync configuration found in pipeline")
@@ -415,6 +421,8 @@ class EvaluationMetrics:
         return float(score), score_per_video
 
     def run_kld(self, force_recalculate: bool = False) -> float:
+        from metrics.kld import calculate_kld
+
         pipeline = self.cfg.pipeline
         if pipeline.kld is None:
             raise ValueError("No KLD configuration found in pipeline")
@@ -438,6 +446,8 @@ class EvaluationMetrics:
         return float(score)
 
     def run_fad(self, force_recalculate: bool = False) -> float:
+        from metrics.fad import calculate_fad
+
         pipeline = self.cfg.pipeline
         if pipeline.fad is None:
             raise ValueError("No FAD configuration found in pipeline")

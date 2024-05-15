@@ -19,22 +19,139 @@ def hash_string(input_string):
     return hashlib.sha256(input_string.encode()).hexdigest()
 
 
+class EvaluationVideo:
+
+    def __init__(
+        self,
+        video_file_path: Path,
+        vfps: float,
+        afps: int,
+        vcodec: str,
+        acodec: str,
+        is_ground_truth: bool,
+        min_side: int = 256,
+        extract_audio: bool = False,
+        audio_file_path: tp.Optional[tp.Union[str, Path]] = None,
+        gt_evaluation_video_object: tp.Optional[tp.Type] = None,
+        start_time: tp.Optional[float] = None,
+        end_time: tp.Optional[float] = None,
+        duration: tp.Optional[float] = None,
+        id: tp.Optional[str] = None,
+        is_original_file: bool = False,
+    ) -> None:
+        if not check_is_file(video_file_path):
+            raise ConfigurationError(f"{video_file_path} is not existing video file.")
+        self.video_file_path = video_file_path
+
+        # handle other variables
+        # TODO: add checks for fps and codecs or read them from the video file
+        self.vfps = vfps
+        self.afps = afps
+        self.vcodec = vcodec
+        self.acodec = acodec
+        self.min_side = min_side
+        self.start_time = start_time
+        self.end_time = end_time
+        self.duration = duration
+        self.is_ground_truth = is_ground_truth
+        self.gt_evaluation_video_object = gt_evaluation_video_object
+        self.is_original_file = is_original_file
+
+        # handle audio
+        self.audio_file_path: tp.Optional[Path] = None
+        if not audio_file_path:
+            if extract_audio:
+                self.audio_file_path = save_audio_from_video(video_file_path, afps)
+            else:
+                self.audio_file_path = None
+        else:
+            if isinstance(audio_file_path, str):
+                audio_file_path = Path(audio_file_path).resolve()
+            if not check_is_file(audio_file_path, ".wav"):
+                raise ConfigurationError(
+                    f"{audio_file_path} is not existing WAV audio file."
+                )
+            self.audio_file_path = audio_file_path
+
+        # link file to other variations of the same file
+        self.id = hash_string(self.video_file_path.name) if not id else id
+
+    def set_gt_evaluation_video_object(self, evaluation_video: tp.Type) -> None:
+        assert isinstance(evaluation_video, EvaluationVideo)
+        assert evaluation_video.is_ground_truth
+        self.gt_evaluation_video_object = evaluation_video
+
+    def delete(self, force: bool = False):
+        if self.is_ground_truth and self.is_original_file:
+            # TODO: maybe delete audiofile?
+            return
+        if (self.is_original_file and force) or not self.is_original_file:
+            self.video_file_path.unlink()
+            if self.audio_file_path:
+                self.audio_file_path.unlink()
+
+
 class EvaluationVideoDirectory:
 
     def __init__(self) -> None:
-        # stores the different variations of the same file
+        # stores the different variations of the same file (same file = same filename)
         # variations have the same data but different samplerates, frame sizes, and/or encodings
         self.video_variations: tp.Dict[str, tp.List[EvaluationVideo]] = {}
 
     def __len__(self) -> int:
         return len(self.video_variations)
 
-    def add_evaluation_videos(self, evaluation_videos: tp.List[tp.Type]) -> None:
+    def load_from_directory(
+        self,
+        directory_path: Path,
+        vfps: float,
+        afps: int,
+        vcodec: str,
+        acodec: str,
+        is_ground_truth: bool,
+        min_side: int = 256,
+        extract_audio: bool = False,
+        start_time: tp.Optional[float] = None,
+        end_time: tp.Optional[float] = None,
+        duration: tp.Optional[float] = None,
+        is_original_file: bool = False,
+    ) -> None:
+        if not directory_path.exists():
+            raise ConfigurationError(f"{directory_path} does not exist.")
+        if not directory_path.is_dir():
+            raise ConfigurationError(f"{directory_path} is not a directory.")
+
+        for video_file_path in [
+            d for d in directory_path.iterdir() if d.suffix == ".mp4"
+        ]:
+            if video_file_path.with_suffix(".wav").is_file():
+                audio_file_path = video_file_path.with_suffix(".wav")
+            else:
+                audio_file_path = None
+
+            self.add_video_from_path(
+                video_file_path=video_file_path,
+                vfps=vfps,
+                afps=afps,
+                vcodec=vcodec,
+                acodec=acodec,
+                min_side=min_side,
+                is_ground_truth=is_ground_truth,
+                extract_audio=extract_audio,
+                audio_file_path=audio_file_path,
+                start_time=start_time,
+                end_time=end_time,
+                duration=duration,
+                is_original_file=is_original_file,
+            )
+
+    def add_evaluation_videos(
+        self, evaluation_videos: tp.List[EvaluationVideo]
+    ) -> None:
         for evaluation_video in evaluation_videos:
             self.add_evaluation_video(evaluation_video)
 
-    def add_evaluation_video(self, evaluation_video: tp.Type) -> None:
-        assert isinstance(evaluation_video, EvaluationVideo)
+    def add_evaluation_video(self, evaluation_video: EvaluationVideo) -> None:
         if evaluation_video.id not in self.video_variations:
             self.video_variations[evaluation_video.id] = []
         self.video_variations[evaluation_video.id].append(evaluation_video)
@@ -42,7 +159,7 @@ class EvaluationVideoDirectory:
     def add_video_from_path(
         self,
         video_file_path: tp.Union[str, Path],
-        vfps: int,
+        vfps: float,
         afps: int,
         vcodec: str,
         acodec: str,
@@ -118,7 +235,7 @@ class EvaluationVideoDirectory:
         self,
         names: tp.Optional[tp.List[str]] = None,
         ids: tp.Optional[tp.List[str]] = None,
-        vfps: int = 25,
+        vfps: float = 25,
         afps: int = 24000,
         vcodec: str = "h264",
         acodec: str = "aac",
@@ -188,7 +305,7 @@ class EvaluationVideoDirectory:
         self,
         name: tp.Optional[str] = None,
         id: tp.Optional[str] = None,
-        vfps: int = 25,
+        vfps: float = 25,
         afps: int = 24000,
         vcodec: str = "h264",
         acodec: str = "aac",
@@ -284,74 +401,89 @@ class EvaluationVideoDirectory:
                 id=id,
             )
 
-
-class EvaluationVideo:
-
-    def __init__(
+    def get_path_to_directory_with_specs(
         self,
-        video_file_path: Path,
-        vfps: int,
-        afps: int,
-        vcodec: str,
-        acodec: str,
-        is_ground_truth: bool,
+        vfps: float = 25,
+        afps: int = 24000,
+        vcodec: str = "h264",
+        acodec: str = "aac",
         min_side: int = 256,
+        ground_truth: bool = False,
         extract_audio: bool = False,
-        audio_file_path: tp.Optional[tp.Union[str, Path]] = None,
-        gt_evaluation_video_object: tp.Optional[tp.Type] = None,
-        start_time: tp.Optional[float] = None,
-        end_time: tp.Optional[float] = None,
-        duration: tp.Optional[float] = None,
-        id: tp.Optional[str] = None,
-        is_original_file: bool = False,
-    ) -> None:
-        if not check_is_file(video_file_path):
-            raise ConfigurationError(f"{video_file_path} is not existing video file.")
-        self.video_file_path = video_file_path
+    ) -> Path:
+        path: tp.Optional[Path] = None
+        # check that does a variation with the given specs exist
+        matches = self._find_variation(
+            vfps=vfps,
+            afps=afps,
+            vcodec=vcodec,
+            acodec=acodec,
+            min_side=min_side,
+            ground_truth=ground_truth,
+        )
+        path = matches[0].video_file_path if matches else None
 
-        # handle other variables
-        # TODO: add checks for fps and codecs or read them from the video file
-        self.vfps = vfps
-        self.afps = afps
-        self.vcodec = vcodec
-        self.acodec = acodec
-        self.min_side = min_side
-        self.start_time = start_time
-        self.end_time = end_time
-        self.duration = duration
-        self.is_ground_truth = is_ground_truth
-        self.gt_evaluation_video_object = gt_evaluation_video_object
-        self.is_original_file = is_original_file or is_ground_truth
+        if not path:
+            self.create_new_variatons(
+                ids=list(self.video_variations.keys()),
+                vfps=vfps,
+                afps=afps,
+                vcodec=vcodec,
+                acodec=acodec,
+                min_side=min_side,
+                for_ground_truth=ground_truth,
+                extract_audio=extract_audio,
+            )
+            matches = self._find_variation(
+                vfps=vfps,
+                afps=afps,
+                vcodec=vcodec,
+                acodec=acodec,
+                min_side=min_side,
+                ground_truth=ground_truth,
+            )
+            if not matches:
+                raise ValueError("Could not create the new variation.")
+            return matches[0].video_file_path.parent
 
-        # handle audio
-        self.audio_file_path: tp.Optional[Path] = None
-        if not audio_file_path:
-            if extract_audio:
-                self.audio_file_path = save_audio_from_video(video_file_path, afps)
-            else:
-                self.audio_file_path = None
         else:
-            if isinstance(audio_file_path, str):
-                audio_file_path = Path(audio_file_path).resolve()
-            if not check_is_file(audio_file_path):
-                raise ConfigurationError(
-                    f"{audio_file_path} is not existing audio file."
-                )
-            self.audio_file_path = audio_file_path
+            return path.parent
 
-        # link file to other variations of the same file
-        self.id = hash_string(self.video_file_path.name) if not id else id
+    def _find_variation(
+        self,
+        id: tp.Optional[str] = None,
+        vfps: tp.Optional[float] = None,
+        afps: tp.Optional[int] = None,
+        vcodec: tp.Optional[str] = None,
+        acodec: tp.Optional[str] = None,
+        min_side: tp.Optional[int] = None,
+        ground_truth: tp.Optional[bool] = None,
+        is_original_file: tp.Optional[bool] = None,
+    ) -> tp.List[EvaluationVideo]:
+        matches: tp.List[EvaluationVideo] = []
+        searched_ids = id if id else list(self.video_variations.keys())
+        properties: tp.Dict[str, tp.Any] = {}
+        # generate properties dictionary according to what variables are provided
+        if vfps:
+            properties["vfps"] = vfps
+        if afps:
+            properties["afps"] = afps
+        if vcodec:
+            properties["vcodec"] = vcodec
+        if acodec:
+            properties["acodec"] = acodec
+        if min_side:
+            properties["min_side"] = min_side
+        if ground_truth:
+            properties["is_ground_truth"] = ground_truth
+        if is_original_file:
+            properties["is_original_file"] = is_original_file
 
-    def set_gt_evaluation_video_object(self, evaluation_video: tp.Type) -> None:
-        assert isinstance(evaluation_video, EvaluationVideo)
-        assert evaluation_video.is_ground_truth
-        self.gt_evaluation_video_object = evaluation_video
+        for id in searched_ids:
+            for video in self.video_variations[id]:
+                if all(
+                    getattr(video, prop) == value for prop, value in properties.items()
+                ):
+                    matches.append(video)
 
-    def delete(self, force: bool = False):
-        if self.is_ground_truth:
-            # TODO: maybe delete audiofile?
-            return
-        if (self.is_original_file and force) or not self.is_original_file:
-            self.video_file_path.unlink()
-            if self.audio_file_path:
-                self.audio_file_path.unlink()
+        return matches

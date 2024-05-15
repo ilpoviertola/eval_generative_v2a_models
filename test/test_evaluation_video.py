@@ -259,3 +259,111 @@ def test_create_new_variations_parallel(sample_file_1, sample_file_2):
     assert len(evd.video_variations[ev_1.id]) == 2
     assert len(evd.video_variations[ev_2.id]) == 2
     evd.remove_all_videos(delete_files=True)
+
+
+def test_find_variation(sample_file_1, gt_file_1):
+    ev_gt = EvaluationVideo(
+        video_file_path=Path(gt_file_1),
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=True,
+        is_original_file=True,
+    )
+    ev = EvaluationVideo(
+        video_file_path=Path(sample_file_1),
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=False,
+        is_original_file=True,
+        gt_evaluation_video_object=ev_gt,
+    )
+    evd = EvaluationVideoDirectory()
+    evd.add_evaluation_videos([ev_gt, ev])
+    assert len(evd) == 1
+
+    variation = evd._find_variation()
+    assert len(variation) == 2
+
+    evd.create_new_variation(
+        id=ev.id,
+        vfps=5,
+        extract_audio=True,
+    )
+    assert len(evd.video_variations[ev.id]) == 3
+    variation = evd._find_variation(vfps=5)
+    assert len(variation) == 1
+    assert variation[0].vfps == 5
+    evd.remove_all_videos(delete_files=True)
+
+
+def test_find_non_existing_variation(sample_file_1):
+    ev = EvaluationVideo(
+        video_file_path=Path(sample_file_1),
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=False,
+        is_original_file=True,
+    )
+    evd = EvaluationVideoDirectory()
+    evd.add_evaluation_video(ev)
+    assert len(evd) == 1
+
+    variation = evd._find_variation(vfps=5)
+    assert len(variation) == 0
+
+
+def test_get_existing_path_to_directory_with_specs(sample_file_1):
+    ev = EvaluationVideo(
+        video_file_path=Path(sample_file_1),
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=False,
+        is_original_file=True,
+    )
+    evd = EvaluationVideoDirectory()
+    evd.add_evaluation_video(ev)
+    assert len(evd) == 1
+
+    path = evd.get_path_to_directory_with_specs(vfps=25)
+    assert path == ev.video_file_path.parent
+
+
+def test_get_path_to_directory_with_new_specs(sample_file_1):
+    ev = EvaluationVideo(
+        video_file_path=Path(sample_file_1),
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=False,
+        is_original_file=True,
+    )
+    evd = EvaluationVideoDirectory()
+    evd.add_evaluation_video(ev)
+    assert len(evd) == 1
+
+    path = evd.get_path_to_directory_with_specs(vfps=5)
+    assert "video_h264_5fps_256side_audio_24000hz_aac" in path.as_posix()
+    evd.remove_all_videos(delete_files=True)
+
+
+def test_load_from_directory(sample_file_1):
+    evd = EvaluationVideoDirectory()
+    evd.load_from_directory(
+        Path(sample_file_1).parent,
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=False,
+    )
+
+    assert len(evd) == 1457
