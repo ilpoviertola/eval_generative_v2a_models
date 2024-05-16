@@ -186,22 +186,22 @@ class EvaluationMetrics:
 
     def run_all(self, force_recalculate: bool = False) -> None:
         pipeline = self.cfg.pipeline
-        if pipeline.fad is not None:
-            self.run_fad(force_recalculate)
-        if pipeline.kld is not None:
-            self.run_kld(force_recalculate)
-        if pipeline.insync is not None:
-            self.run_insync(force_recalculate)
-        if pipeline.avclip_score is not None:
-            self.run_avclip_score(force_recalculate)
-        if pipeline.zcr is not None:
-            self.run_zcr(force_recalculate)
-        if pipeline.rhythm_similarity is not None:
-            self.run_rhythm_similarity(force_recalculate)
-        if pipeline.spectral_contrast_similarity is not None:
-            self.run_spectral_contrast_similarity(force_recalculate)
-        if pipeline.imagebind_score is not None:
-            self.run_imagebind_score(force_recalculate)
+        metrics = {
+            "fad": self.run_fad,
+            "kld": self.run_kld,
+            "insync": self.run_insync,
+            "avclip_score": self.run_avclip_score,
+            "zcr": self.run_zcr,
+            "rhythm_similarity": self.run_rhythm_similarity,
+            "spectral_contrast_similarity": self.run_spectral_contrast_similarity,
+            "imagebind_score": self.run_imagebind_score,
+        }
+        for metric, func in metrics.items():
+            if getattr(pipeline, metric) is not None:
+                try:
+                    func(force_recalculate)
+                except Exception as e:
+                    print(f"Error calculating {metric.capitalize()}: {e}")
 
     def run_imagebind_score(self, force_recalculate: bool = False) -> float:
         from metrics.imagebind_score import calculate_imagebind_score
