@@ -429,6 +429,7 @@ def calculate_kld(
     pretrained_length: int = 10,
     verbose: bool = False,
     metadata: tp.Optional[tp.Dict[str, tp.Any]] = None,
+    apply_metadata_to_samples: bool = False,
 ) -> float:
     """Calculate Kulback-Leibler Divergence."""
     kld_metric = PasstKLDivergenceMetric(pretrained_length=pretrained_length)
@@ -441,6 +442,7 @@ def calculate_kld(
         audio_gts_dir=audio_gts_dir,
         duration=duration,
         metadata=metadata,
+        apply_metadata_to_samples=apply_metadata_to_samples,
     )
     loader = DataLoader(
         dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False

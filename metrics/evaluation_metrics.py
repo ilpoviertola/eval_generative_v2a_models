@@ -7,12 +7,8 @@ import yaml
 import csv
 
 from configs.evaluation_cfg import EvaluationCfg
-from eval_utils.file_utils import (
-    rmdir_and_contents,
-    extract_audios_from_video_dir_if_needed,
-    reencode_dir_if_needed,
-)
 from eval_utils.utils import dataclass_from_dict
+from data.evaluation_video import EvaluationVideoDirectory
 
 
 def load_evaluation_metrics_from_file(path: tp.Union[str, Path]) -> "EvaluationMetrics":
@@ -41,12 +37,40 @@ class EvaluationMetrics:
     def __init__(self, cfg: EvaluationCfg, inited_from_file: bool = False) -> None:
         self.cfg = cfg
         self.results: tp.Dict[str, tp.Any] = {}
-        self.directory_info: tp.Dict[str, tp.Any] = {}
+        self.evaluation_video_dir: EvaluationVideoDirectory = (
+            self._init_evaluation_video_dir()
+        )
         self.metadata = self._read_metadata()
         if not inited_from_file:
             self.update_last_calculated_ts()
             self.clean_sample_directory()
             self.resolve_directories()
+
+    def _init_evaluation_video_dir(self) -> EvaluationVideoDirectory:
+        evd = EvaluationVideoDirectory()
+        evd.load_from_directory(
+            directory_path=self.cfg.sample_directory,
+            vfps=self.cfg.sample_vfps,
+            afps=self.cfg.sample_afps,
+            vcodec=self.cfg.sample_vcodec,
+            acodec=self.cfg.sample_acodec,
+            min_side=self.cfg.sample_min_side,
+            is_ground_truth=False,
+            extract_audio=True,
+            is_original_file=True,
+        )
+        evd.load_from_directory(
+            directory_path=self.cfg.gt_directory,
+            vfps=self.cfg.gt_vfps,
+            afps=self.cfg.gt_afps,
+            vcodec=self.cfg.gt_vcodec,
+            acodec=self.cfg.gt_acodec,
+            min_side=self.cfg.gt_min_side,
+            is_ground_truth=True,
+            extract_audio=True,
+            is_original_file=True,
+        )
+        return evd
 
     def _read_metadata(self) -> tp.Union[None, tp.Dict[str, tp.Any]]:
         if self.cfg.metadata is not None:
@@ -91,97 +115,50 @@ class EvaluationMetrics:
                 ["insync", "avclip_score", "imagebind_score"], "afps"
             )
             input_size = self.get_config_value_across_pipelines(
-                ["insync", "avclip_score", "imagebind_score"], "input_size", 224
+                ["insync", "avclip_score"], "input_size", 256
             )
 
             # reencode the generated videos if needed
-            if (
-                self.cfg.sample_directory
-                / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size"
-            ).exists():
-                print("resampled directory already exists")
-                generated_videos_path = (
-                    self.cfg.sample_directory
-                    / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size"
-                )
-                resampled = True
-            else:
-                generated_videos_path, resampled = reencode_dir_if_needed(
-                    self.cfg.sample_directory,
-                    vfps,
-                    afps,
-                    input_size,
-                    self.cfg.sample_directory
-                    / f"reencoded_to_{vfps}vfps_{afps}afps_{input_size}size",
-                )
-            self.directory_info["generated_videos"] = {
-                f"{vfps}vfps_{afps}afps_{input_size}size": (
-                    generated_videos_path,
-                    resampled,
-                )
-            }
+            dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                vfps=vfps, afps=afps, min_side=input_size, ground_truth=False
+            )
+            assert (
+                dir_path.exists()
+            ), "something went wrong with the encoding of the video directory"
 
         if pipeline.fad is not None:
             print("Extracting audio for FAD...")
-            self.directory_info["fad"] = {}
             # check does embeddings exist for groundtruth
             if (
                 pipeline.fad.embeddings_fn is not None
                 and (self.cfg.gt_directory / pipeline.fad.embeddings_fn).exists()
             ):
-                self.directory_info["fad"]["gt_embeddings"] = True
                 print(
                     f"Embeddings found in gt directory ({(self.cfg.gt_directory / pipeline.fad.embeddings_fn).as_posix()})"
                 )
             else:
-                self.directory_info["fad"]["gt_embeddings"] = False
-                # extract audio from GT videos and sample it to desired frequency
-                if (
-                    self.cfg.gt_directory / f"audio_{pipeline.fad.sample_rate}"
-                ).exists():
-                    print("audio directory already exists for GT")
-                    gt_audios = (
-                        self.cfg.gt_directory / f"audio_{pipeline.fad.sample_rate}"
-                    )
-                else:
-                    gt_audios, _ = extract_audios_from_video_dir_if_needed(
-                        self.cfg.gt_directory,
-                        pipeline.fad.sample_rate,
-                        True,
-                        self.cfg.gt_directory / f"audio_{pipeline.fad.sample_rate}",
-                    )
-                self.directory_info["gt_audios"] = {
-                    f"{pipeline.fad.sample_rate}afps": (gt_audios, True)
-                }
+                dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                    afps=pipeline.fad.sample_rate,
+                    ground_truth=True,
+                    extract_audio=True,
+                )
+                assert (
+                    dir_path.exists()
+                ), "something went wrong with the audio extraction"
             # check does embeddings exist for generated samples
             if (
                 pipeline.fad.embeddings_fn is not None
                 and (self.cfg.sample_directory / pipeline.fad.embeddings_fn).exists()
             ):
-                self.directory_info["fad"]["generated_embeddings"] = True
                 print(
                     f"Embeddings found in sample directory ({(self.cfg.sample_directory / pipeline.fad.embeddings_fn).as_posix()})"
                 )
             else:
-                self.directory_info["fad"]["generated_embeddings"] = False
-                # extract audio from generated videos and sample it to desired frequency
-                if (
-                    self.cfg.sample_directory / f"audio_{pipeline.fad.sample_rate}"
-                ).exists():
-                    print("audio directory already exists for generated samples")
-                    sample_audios = (
-                        self.cfg.sample_directory / f"audio_{pipeline.fad.sample_rate}"
-                    )
-                else:
-                    sample_audios, _ = extract_audios_from_video_dir_if_needed(
-                        self.cfg.sample_directory,
-                        pipeline.fad.sample_rate,
-                        True,
-                        self.cfg.sample_directory / f"audio_{pipeline.fad.sample_rate}",
-                    )
-                self.directory_info["sample_audios"] = {
-                    f"{pipeline.fad.sample_rate}afps": (sample_audios, True)
-                }
+                dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                    afps=pipeline.fad.sample_rate,
+                    ground_truth=False,
+                    extract_audio=True,
+                )
 
         if (
             pipeline.zcr is not None
@@ -191,71 +168,21 @@ class EvaluationMetrics:
             print(
                 "Extracting audio for ZCR, Rhythm Similarity or Spectral Contrast Similarity..."
             )
-            # check does gt directory have audio already extracted
-            if len(list(self.cfg.gt_directory.glob("*.wav"))) == len(
-                list(self.cfg.gt_directory.glob("*.mp4"))
-            ):
-                print("audios already extracted for GT")
-                gt_audios = self.cfg.gt_directory
-            else:
-                sr = self.get_config_value_across_pipelines(
-                    ["zcr", "rhythm_similarity", "spectral_contrast_similarity"], "afps"
-                )
-                gt_audios, _ = extract_audios_from_video_dir_if_needed(
-                    self.cfg.gt_directory,
-                    sr,
-                    True,
-                    self.cfg.gt_directory,
-                )
-                self.directory_info["gt_audios"] = (
-                    {f"{sr}afps": (gt_audios, False)}
-                    if "gt_audios" not in self.directory_info
-                    else {
-                        **self.directory_info["gt_audios"],
-                        f"{sr}afps": (gt_audios, False),
-                    }
-                )
-
-            # copy ground truths of sample audios to a new directory
-            sample_audio_gt_dir = gt_audios / "sample_subset"
-            if sample_audio_gt_dir.exists():
-                rmdir_and_contents(sample_audio_gt_dir, verbose=self.cfg.verbose)
-            sample_audio_gt_dir.mkdir(exist_ok=True)
-            for sample_audio in self.cfg.sample_directory.iterdir():
-                fn = sample_audio.name
-                if fn.endswith(".wav"):
-                    assert (
-                        gt_audios / fn
-                    ).exists(), f"GT audio {gt_audios / fn} not found"
-                    (sample_audio_gt_dir / fn).resolve().symlink_to(
-                        self.cfg.gt_directory / fn
-                    )
-            self.directory_info["gts_for_sample_audios"] = (sample_audio_gt_dir, True)
+            afps = self.get_config_value_across_pipelines(
+                ["zcr", "rhythm_similarity", "spectral_contrast_similarity"], "afps"
+            )
+            dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=afps, ground_truth=True, extract_audio=True
+            )
+            assert dir_path.exists(), "something went wrong with the audio extraction"
+            dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=afps, ground_truth=False, extract_audio=True
+            )
+            assert dir_path.exists(), "something went wrong with the audio extraction"
 
     def remove_resampled_directories(self) -> None:
         """Remove the resampled directories if they were created"""
-        if "sample_audios" in self.directory_info:
-            for _, (sample_dir, resampled) in self.directory_info[
-                "sample_audios"
-            ].items():
-                if resampled:
-                    rmdir_and_contents(sample_dir, verbose=self.cfg.verbose)
-        if "gt_audios" in self.directory_info:
-            for _, (gt_dir, resampled) in self.directory_info["gt_audios"].items():
-                if resampled:
-                    rmdir_and_contents(gt_dir, verbose=self.cfg.verbose)
-        if "generated_videos" in self.directory_info:
-            for _, (gen_dir, resampled) in self.directory_info[
-                "generated_videos"
-            ].items():
-                if resampled:
-                    rmdir_and_contents(gen_dir, verbose=self.cfg.verbose)
-        if "gts_for_sample_audios" in self.directory_info:
-            gts_for_sample_audios_dir, resampled = self.directory_info[
-                "gts_for_sample_audios"
-            ]
-            if resampled:
-                rmdir_and_contents(gts_for_sample_audios_dir, verbose=self.cfg.verbose)
+        self.evaluation_video_dir.remove_all_videos(delete_files=True)
 
     def run_all(self, force_recalculate: bool = False) -> None:
         pipeline = self.cfg.pipeline
@@ -315,8 +242,12 @@ class EvaluationMetrics:
 
         self.update_last_calculated_ts()
         score = calculate_spectral_contrast_similarity(
-            self.cfg.sample_directory,
-            self.directory_info["gts_for_sample_audios"][0],
+            self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.spectral_contrast_similarity.afps, ground_truth=False
+            ),
+            self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.spectral_contrast_similarity.afps, ground_truth=True
+            ),
             pipeline.rhythm_similarity.afps,
             self.cfg.verbose,
             self.metadata,
@@ -337,8 +268,12 @@ class EvaluationMetrics:
 
         self.update_last_calculated_ts()
         score = calculate_rhythm_similarity(
-            self.cfg.sample_directory,
-            self.directory_info["gts_for_sample_audios"][0],
+            self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.rhythm_similarity.afps, ground_truth=False
+            ),
+            self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.rhythm_similarity.afps, ground_truth=True
+            ),
             pipeline.rhythm_similarity.afps,
             self.cfg.verbose,
             self.metadata,
@@ -359,9 +294,12 @@ class EvaluationMetrics:
 
         self.update_last_calculated_ts()
         score = calculate_zcr(
-            self.cfg.sample_directory,
-            self.directory_info["gts_for_sample_audios"][0],
-            pipeline.zcr.afps,
+            self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.zcr.afps, ground_truth=False
+            ),
+            self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.zcr.afps, ground_truth=True
+            ),
             self.cfg.verbose,
             self.metadata,
             pipeline.zcr.duration,
@@ -384,9 +322,9 @@ class EvaluationMetrics:
         afps = pipeline.avclip_score.afps
         input_size = pipeline.avclip_score.input_size
         score = calculate_avclip_score(
-            samples=self.directory_info["generated_videos"][
-                f"{vfps}vfps_{afps}afps_{input_size}size"
-            ][0].as_posix(),
+            samples=self.evaluation_video_dir.get_path_to_directory_with_specs(
+                vfps=vfps, afps=afps, min_side=input_size, ground_truth=False
+            ).as_posix(),
             verbose=self.cfg.verbose,
             **asdict(pipeline.avclip_score),
         )
@@ -410,9 +348,9 @@ class EvaluationMetrics:
         afps = pipeline.insync.afps
         input_size = pipeline.insync.input_size
         score, score_per_video = calculate_insync(
-            samples=self.directory_info["generated_videos"][
-                f"{vfps}vfps_{afps}afps_{input_size}size"
-            ][0].as_posix(),
+            samples=self.evaluation_video_dir.get_path_to_directory_with_specs(
+                vfps=vfps, afps=afps, min_side=input_size, ground_truth=False
+            ).as_posix(),
             verbose=self.cfg.verbose,
             **asdict(pipeline.insync),
         )
@@ -455,23 +393,25 @@ class EvaluationMetrics:
             print("FAD already calculated, skipping...")
             return self.results["fad"]
 
-        if self.directory_info["fad"]["gt_embeddings"]:
+        if (
+            pipeline.fad.embeddings_fn is not None
+            and (self.cfg.gt_directory / pipeline.fad.embeddings_fn).exists()
+        ):
             gt_dir = None
-            resampled_gt = False
         else:
-            gt_dir, resampled_gt = self.directory_info["gt_audios"][
-                f"{pipeline.fad.sample_rate}afps"
-            ]
-            gt_dir = gt_dir.as_posix()
+            gt_dir = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.fad.sample_rate, ground_truth=True
+            ).as_posix()
 
-        if self.directory_info["fad"]["generated_embeddings"]:
+        if (
+            pipeline.fad.embeddings_fn is not None
+            and (self.cfg.sample_directory / pipeline.fad.embeddings_fn).exists()
+        ):
             sample_dir = None
-            resampled_samples = False
         else:
-            sample_dir, resampled_samples = self.directory_info["sample_audios"][
-                f"{pipeline.fad.sample_rate}afps"
-            ]
-            sample_dir = sample_dir.as_posix()
+            sample_dir = self.evaluation_video_dir.get_path_to_directory_with_specs(
+                afps=pipeline.fad.sample_rate, ground_truth=False
+            ).as_posix()
 
         self.update_last_calculated_ts()
         score = calculate_fad(

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from torch.nn.functional import pad
 from torch.utils.data import Dataset
@@ -15,6 +15,7 @@ class AudioDataset(Dataset):
         audio_gts_dir: Path,
         duration: Optional[float] = 2.56,
         metadata: Optional[Dict] = None,
+        apply_metadata_to_samples: bool = False,
     ):
         """Initialize AudioDataset.
 
@@ -30,10 +31,11 @@ class AudioDataset(Dataset):
             audio_gts
         ), "Must have same number of samples or less than ground truths."
 
-        self.audio_samples = sorted(audio_samples, key=lambda p: p.name)
+        self.audio_samples: List[Path] = sorted(audio_samples, key=lambda p: p.name)
         self.audio_gts_dir = Path(audio_gts_dir)
         self.duration = duration
         self.metadata = metadata if metadata is not None else {}
+        self.apply_metadata_to_samples = apply_metadata_to_samples
 
     def __len__(self):
         """Return length of dataset."""
@@ -49,6 +51,8 @@ class AudioDataset(Dataset):
         )  # this is where sample starts in gt
 
         sample_audio, sample_audio_sr = load(sample)
+        if self.apply_metadata_to_samples:
+            sample_audio = sample_audio[..., int(start_sec * sample_audio_sr) :]
         gt_audio, gt_audio_sr = load(gt)
         gt_audio = gt_audio[..., int(start_sec * gt_audio_sr) :]
 
@@ -66,6 +70,8 @@ class AudioDataset(Dataset):
         )
         if gt_audio.shape[0] == 2:
             gt_audio = gt_audio.mean(dim=0, keepdim=True)
+        if sample_audio.shape[0] == 2:
+            sample_audio = sample_audio.mean(dim=0, keepdim=True)
         return {
             "sample_audio": sample_audio,
             "gt_audio": gt_audio,

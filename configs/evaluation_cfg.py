@@ -31,6 +31,7 @@ class KLDCfg:
     batch_size: int = 10
     num_workers: int = 10
     duration: float = 2.56
+    apply_metadata_to_samples: bool = False
 
     def __post_init__(self):
         # TODO: checking
@@ -70,18 +71,21 @@ class AVClipScoreCfg:
 class ZCRCfg:
     afps: int = 24_000
     duration: float = 2.56
+    apply_metadata_to_samples: bool = False
 
 
 @dataclass
 class RhythmSimilarityCfg:
     afps: int = 24_000
     duration: float = 2.56
+    apply_metadata_to_samples: bool = False
 
 
 @dataclass
 class SpectralContrastSimilarityCfg:
     afps: int = 24_000
     duration: float = 2.56
+    apply_metadata_to_samples: bool = False
 
 
 @dataclass
@@ -113,6 +117,18 @@ class EvaluationCfg:
     pipeline: PipelineCfg
     # ground truth data (.wav)
     gt_directory: Path
+    # sample directory specific metadata
+    sample_vfps: int = 25
+    sample_afps: int = 24_000
+    sample_min_side: int = 256
+    sample_acodec: str = "aac"
+    sample_vcodec: str = "h264"
+    # ground truth directory specific metadata
+    gt_vfps: int = 25
+    gt_afps: int = 24_000
+    gt_min_side: int = 256
+    gt_acodec: str = "aac"
+    gt_vcodec: str = "h264"
     # metadata
     metadata: tp.Optional[Path] = None
     # directories to save evaluation results
@@ -164,7 +180,8 @@ def get_evaluation_config(eval_cfg_dict: tp.Union[dict, Path, str]) -> Evaluatio
     """Method to get evaluation config from a dictionary.
 
     Args:
-        eval_cfg_dict (dict): Dictionary defining the evaluation configuration.
+        eval_cfg_dict (dict, Path, str): Dictionary defining the evaluation configuration
+        or path to the configuration file.
 
     Returns:
         EvaluationCfg: Evaluation configuration object.

@@ -2,38 +2,30 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
-import librosa
 from tqdm import tqdm
+
+from eval_utils.dataset import AudioDataset
+from torch.utils.data import DataLoader
 
 
 def calculate_zcr(
     samples_dir: Path,
     gt_dir: Path,
-    sample_rate: int,
     verbose: bool = False,
-    start_secs: Optional[Dict[str, float]] = None,
+    metadata: Optional[Dict[str, float]] = None,
     duration: float = 2.56,
+    apply_metadata_to_samples: bool = False,
 ) -> float:
-    sample_files = sorted(list(samples_dir.glob("*.wav")))
-    gt_files = sorted(list(gt_dir.glob("*.wav")))
-    if start_secs is None:
-        start_secs = {}
+    dataset = AudioDataset(
+        samples_dir, gt_dir, duration, metadata, apply_metadata_to_samples
+    )
+    loader = DataLoader(dataset, batch_size=1, num_workers=1, shuffle=False)
     total_zcr_similarity = 0.0
     count = 0
 
-    for sample_file, gt_file in tqdm(
-        zip(sample_files, gt_files), desc="Calculating ZCR", total=len(sample_files)
-    ):
-        assert (
-            sample_file.name == gt_file.name
-        ), f"Sample and GT files do not match: {sample_file.name} != {gt_file.name}"
-        sample, _ = librosa.load(sample_file, sr=sample_rate)
-        gt, _ = librosa.load(
-            gt_file,
-            sr=sample_rate,
-            offset=float(start_secs.get(gt_file.stem, 0)),
-            duration=duration,
-        )
+    for batch in tqdm(loader, desc="Calculating ZCR"):
+        sample = batch["sample_audio"].numpy()
+        gt = batch["gt_audio"].numpy()
         gt_zcr = np.mean(np.abs(np.diff(np.sign(gt))) > 0)
         sample_zcr = np.mean(np.abs(np.diff(np.sign(sample))) > 0)
         zcr_similarity = 1 - np.abs(gt_zcr - sample_zcr)

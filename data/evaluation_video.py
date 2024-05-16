@@ -262,6 +262,17 @@ class EvaluationVideoDirectory:
         if not ids:
             raise TypeError("Names or ids must be provided.")
 
+        # sometimes there can be more gt files than samples and vice versa
+        # filter out the ids that are/are not ground truths
+        ids = [
+            id
+            for id in ids
+            if any(
+                video.is_ground_truth == for_ground_truth
+                for video in self.video_variations[id]
+            )
+        ]
+
         if parallel:
             variation_results = []
             with ProcessPoolExecutor() as executor:
@@ -338,9 +349,13 @@ class EvaluationVideoDirectory:
         # get the original video or the ground truth video if for_ground_truth is True
         original_evaluation_video = None
         for video in self.video_variations[id]:
-            if video.is_original_file or (for_ground_truth and video.is_ground_truth):
-                original_evaluation_video = video
-                break
+            if video.is_original_file:
+                if for_ground_truth and video.is_ground_truth:
+                    original_evaluation_video = video
+                    break
+                else:
+                    original_evaluation_video = video
+                    break
         if not original_evaluation_video:
             print(f"No original video found for the given ID ({id}) or name ({name}).")
             print("Make sure you configure the original video correctly.")
@@ -482,7 +497,7 @@ class EvaluationVideoDirectory:
         for id in searched_ids:
             for video in self.video_variations[id]:
                 if all(
-                    getattr(video, prop) is value for prop, value in properties.items()
+                    getattr(video, prop) == value for prop, value in properties.items()
                 ):
                     matches.append(video)
 
