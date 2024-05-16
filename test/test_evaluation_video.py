@@ -77,7 +77,7 @@ def test_delete_gt_evaluation_video_from_directory(gt_file_1):
         vcodec="h264",
         acodec="aac",
         is_ground_truth=True,
-        is_original_file=False,
+        is_original_file=True,
     )
     evd = EvaluationVideoDirectory()
     evd.add_evaluation_video(ev)
@@ -270,6 +270,7 @@ def test_find_variation(sample_file_1, gt_file_1):
         acodec="aac",
         is_ground_truth=True,
         is_original_file=True,
+        extract_audio=True,
     )
     ev = EvaluationVideo(
         video_file_path=Path(sample_file_1),
@@ -280,6 +281,7 @@ def test_find_variation(sample_file_1, gt_file_1):
         is_ground_truth=False,
         is_original_file=True,
         gt_evaluation_video_object=ev_gt,
+        extract_audio=True,
     )
     evd = EvaluationVideoDirectory()
     evd.add_evaluation_videos([ev_gt, ev])
@@ -294,7 +296,7 @@ def test_find_variation(sample_file_1, gt_file_1):
         extract_audio=True,
     )
     assert len(evd.video_variations[ev.id]) == 3
-    variation = evd._find_variation(vfps=5)
+    variation = evd._find_variation(vfps=5, has_audio=True)
     assert len(variation) == 1
     assert variation[0].vfps == 5
     evd.remove_all_videos(delete_files=True)
@@ -367,3 +369,22 @@ def test_load_from_directory(sample_file_1):
     )
 
     assert len(evd) == 1457
+
+
+def test_find_variations_and_extract_audio(sample_file_1):
+    ev = EvaluationVideo(
+        video_file_path=Path(sample_file_1),
+        vfps=25,
+        afps=24000,
+        vcodec="h264",
+        acodec="aac",
+        is_ground_truth=False,
+        is_original_file=True,
+    )
+    evd = EvaluationVideoDirectory()
+    evd.add_evaluation_video(ev)
+    assert len(evd) == 1
+    assert not ev.has_audio
+
+    evd._find_variation(vfps=25, has_audio=True)
+    assert ev.has_audio

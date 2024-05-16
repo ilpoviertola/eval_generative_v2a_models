@@ -56,14 +56,26 @@ class EvaluationVideo:
         self.is_ground_truth = is_ground_truth
         self.gt_evaluation_video_object = gt_evaluation_video_object
         self.is_original_file = is_original_file
+        self.has_audio = extract_audio
 
         # handle audio
         self.audio_file_path: tp.Optional[Path] = None
+        if extract_audio:
+            self.extract_audio(audio_file_path)
+
+        # link file to other variations of the same file
+        self.id = hash_string(self.video_file_path.name) if not id else id
+
+    def extract_audio(self, audio_file_path: tp.Optional[tp.Union[str, Path]] = None):
+        if self.has_audio and self.audio_file_path and audio_file_path is None:
+            return
         if not audio_file_path:
-            if extract_audio:
-                self.audio_file_path = save_audio_from_video(video_file_path, afps)
+            if self.video_file_path.with_suffix(".wav").is_file():
+                self.audio_file_path = self.video_file_path.with_suffix(".wav")
             else:
-                self.audio_file_path = None
+                self.audio_file_path = save_audio_from_video(
+                    self.video_file_path, self.afps
+                )
         else:
             if isinstance(audio_file_path, str):
                 audio_file_path = Path(audio_file_path).resolve()
@@ -72,9 +84,7 @@ class EvaluationVideo:
                     f"{audio_file_path} is not existing WAV audio file."
                 )
             self.audio_file_path = audio_file_path
-
-        # link file to other variations of the same file
-        self.id = hash_string(self.video_file_path.name) if not id else id
+        self.has_audio = True
 
     def set_gt_evaluation_video_object(self, evaluation_video: tp.Type) -> None:
         assert isinstance(evaluation_video, EvaluationVideo)
@@ -351,65 +361,49 @@ class EvaluationVideoDirectory:
         new_path = original_evaluation_video.video_file_path.parent / new_folder_name
         new_path.mkdir(exist_ok=True)
         new_path = new_path / original_evaluation_video.video_file_path.name
-        reencode_video(
-            path=original_evaluation_video.video_file_path.as_posix(),
-            vfps=vfps,
-            afps=afps,
-            min_side=min_side,
-            acodec=acodec,
-            vcodec=vcodec,
-            new_path=new_path.as_posix(),
-        )
-        assert new_path.exists()
 
+        if not new_path.exists():
+            reencode_video(
+                path=original_evaluation_video.video_file_path.as_posix(),
+                vfps=vfps,
+                afps=afps,
+                min_side=min_side,
+                acodec=acodec,
+                vcodec=vcodec,
+                new_path=new_path.as_posix(),
+            )
+            assert new_path.exists()
+
+        evaluation_video_params = {
+            "video_file_path": new_path,
+            "vfps": vfps,
+            "afps": afps,
+            "vcodec": vcodec,
+            "acodec": acodec,
+            "min_side": min_side,
+            "is_ground_truth": for_ground_truth,
+            "extract_audio": extract_audio,
+            "is_original_file": False,
+            "gt_evaluation_video_object": None,
+            "id": id,
+        }
         if parallel_exec:
             # will be added to the directory in the main process
-            return EvaluationVideo(
-                video_file_path=new_path,
-                vfps=vfps,
-                afps=afps,
-                vcodec=vcodec,
-                acodec=acodec,
-                min_side=min_side,
-                is_ground_truth=for_ground_truth,
-                extract_audio=extract_audio,
-                is_original_file=False,
-                gt_evaluation_video_object=(
-                    original_evaluation_video.gt_evaluation_video_object
-                    if not for_ground_truth
-                    else None
-                ),
-                id=id,
-            )
+            return EvaluationVideo(**evaluation_video_params)  # type: ignore
         else:
             # add to directory
-            self.add_video_from_path(
-                video_file_path=new_path,
-                vfps=vfps,
-                afps=afps,
-                vcodec=vcodec,
-                acodec=acodec,
-                min_side=min_side,
-                is_ground_truth=for_ground_truth,
-                extract_audio=extract_audio,
-                is_original_file=False,
-                gt_evaluation_video_object=(
-                    original_evaluation_video.gt_evaluation_video_object
-                    if not for_ground_truth
-                    else None
-                ),
-                id=id,
-            )
+            self.add_video_from_path(**evaluation_video_params)  # type: ignore
 
     def get_path_to_directory_with_specs(
         self,
-        vfps: float = 25,
-        afps: int = 24000,
-        vcodec: str = "h264",
-        acodec: str = "aac",
-        min_side: int = 256,
+        vfps: tp.Optional[float] = None,
+        afps: tp.Optional[int] = None,
+        vcodec: tp.Optional[str] = None,
+        acodec: tp.Optional[str] = None,
+        min_side: tp.Optional[int] = None,
+        extract_audio: tp.Optional[bool] = False,
         ground_truth: bool = False,
-        extract_audio: bool = False,
+        parallel_exec: bool = True,
     ) -> Path:
         path: tp.Optional[Path] = None
         # check that does a variation with the given specs exist
@@ -420,19 +414,22 @@ class EvaluationVideoDirectory:
             acodec=acodec,
             min_side=min_side,
             ground_truth=ground_truth,
+            has_audio=extract_audio,
+            parallel_exec=parallel_exec,
         )
         path = matches[0].video_file_path if matches else None
 
         if not path:
             self.create_new_variatons(
                 ids=list(self.video_variations.keys()),
-                vfps=vfps,
-                afps=afps,
-                vcodec=vcodec,
-                acodec=acodec,
-                min_side=min_side,
+                vfps=vfps if vfps else 25,
+                afps=afps if afps else 24000,
+                vcodec=vcodec if vcodec else "h264",
+                acodec=acodec if acodec else "aac",
+                min_side=min_side if min_side else 256,
                 for_ground_truth=ground_truth,
-                extract_audio=extract_audio,
+                extract_audio=extract_audio if extract_audio else False,
+                parallel=parallel_exec,
             )
             matches = self._find_variation(
                 vfps=vfps,
@@ -441,6 +438,7 @@ class EvaluationVideoDirectory:
                 acodec=acodec,
                 min_side=min_side,
                 ground_truth=ground_truth,
+                parallel_exec=False,
             )
             if not matches:
                 raise ValueError("Could not create the new variation.")
@@ -459,6 +457,8 @@ class EvaluationVideoDirectory:
         min_side: tp.Optional[int] = None,
         ground_truth: tp.Optional[bool] = None,
         is_original_file: tp.Optional[bool] = None,
+        has_audio: tp.Optional[bool] = None,
+        parallel_exec: bool = True,
     ) -> tp.List[EvaluationVideo]:
         matches: tp.List[EvaluationVideo] = []
         searched_ids = id if id else list(self.video_variations.keys())
@@ -482,8 +482,24 @@ class EvaluationVideoDirectory:
         for id in searched_ids:
             for video in self.video_variations[id]:
                 if all(
-                    getattr(video, prop) == value for prop, value in properties.items()
+                    getattr(video, prop) is value for prop, value in properties.items()
                 ):
                     matches.append(video)
+
+        # in case that the variation exists but the audio is not extracted
+        if has_audio and matches:
+
+            def extract_audio(video: EvaluationVideo):
+                if not video.has_audio:
+                    video.extract_audio()
+
+            if parallel_exec:
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    executor.map(extract_audio, matches)
+            else:
+                for video in matches:
+                    extract_audio(video)
 
         return matches
