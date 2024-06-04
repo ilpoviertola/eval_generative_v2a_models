@@ -131,3 +131,29 @@ class EvaluationMetricsCombiner:
             return plot_path
         else:
             return fig
+
+    def export_to_table(self, table_path: tp.Union[str, Path]) -> tp.Optional[Path]:
+        """Export the combined metrics to a table.
+
+        Args:
+            table_path (tp.Union[str, Path]): Path to the table.
+        """
+        from pandas import DataFrame
+
+        if table_path is not None:
+            table_path = Path(table_path)
+            table_path.parent.mkdir(exist_ok=True, parents=True)
+
+        data = {}
+        for metric_type in self.all_results:
+            if metric_type == "insync_per_video":
+                continue
+            data[metric_type] = self.all_results[metric_type][1]
+        df = DataFrame(data, index=self.all_results[metric_type][0])
+
+        if table_path:
+            df.to_csv(table_path, index=True)
+            return Path(table_path)
+        else:
+            print(df)
+            return None

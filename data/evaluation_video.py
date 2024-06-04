@@ -302,6 +302,7 @@ class EvaluationVideoDirectory:
                         variation_results.append(result)
                     except Exception as exc:
                         print(f"Generated an exception: {exc}")
+                        print(f"Check that the FFMPEG is installed in current env.")
 
             # add the results to the directory
             # multiprocessing does not share class state between the processes

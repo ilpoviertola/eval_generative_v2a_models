@@ -19,10 +19,17 @@ def get_args():
     )
     parser.add_argument(
         "--plot_dir",
-        "-d",
+        "-pd",
         type=str,
         default=".",
         help="Directory where to save the evaluation plots.",
+    )
+    parser.add_argument(
+        "--table_dir",
+        "-td",
+        type=str,
+        default=".",
+        help="Directory where to save the evaluation result tables.",
     )
     return parser.parse_args()
 
@@ -63,7 +70,10 @@ def main():
 
     evaluation_metrics_combiner = EvaluationMetricsCombiner(all_evaluation_metrics)
     evaluation_metrics_combiner.combine()
-    evaluation_metrics_combiner.plot(args.plot_dir)
+    if args.table_dir:
+        evaluation_metrics_combiner.export_to_table(args.table_dir)
+    if args.plot_dir:
+        evaluation_metrics_combiner.plot(args.plot_dir)
 
 
 if __name__ == "__main__":
