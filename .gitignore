@@ -40,3 +40,6 @@ encoding_comparison_results/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Local files
+tmp/

@@ -1,5 +1,5 @@
-id: vgg-8cb-long_ctx-full_eval_pipe
-sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-05-17T08-46-22/generated_samples_24-05-20T16-52-47
+id: vgg-4cb-short-smallest_stride-full_eval_pipe
+sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-05-28T22-30-36/generated_samples_24-06-04T14-11-21
 gt_directory: /home/hdd/ilpo/datasets/vggsound/test_h264_video_25fps_256side_24000hz_aac
 metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
 verbose: false

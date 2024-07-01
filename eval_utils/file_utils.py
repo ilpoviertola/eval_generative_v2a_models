@@ -100,6 +100,22 @@ def reencode_video(
         subprocess.call(cmd.split())
 
 
+def cut_video(input_file: str, start_time: float, duration: float, output_file: str):
+    """
+    Cut a video to a certain length using moviepy.
+
+    Args:
+        input_file (str): Path to the input video file.
+        start_time (int): Start time of the segment to cut in seconds.
+        end_time (int): End time of the segment to cut in seconds.
+        output_file (str): Path to the output video file.
+    """
+    cmd = (
+        f"{which_ffmpeg()} -i {input_file} -ss {start_time} -t {duration} {output_file}"
+    )
+    subprocess.call(cmd.split())
+
+
 def convert_audio_channels(wav: torch.Tensor, channels: int = 2) -> torch.Tensor:
     """Convert audio to the given number of channels.
 
@@ -440,15 +456,20 @@ def reencode_videos_in_parallel(
 
 
 if __name__ == "__main__":
-    videos = list(
-        Path(
-            "/home/hdd/ilpo/datasets/greatesthit/vis-data-256_h264_video_25fps_256side_24000hz_aac_len_5_splitby_random"
-        ).glob("*.mp4")
-    )
+    import csv
 
-    output_dir = Path(
-        "/home/hdd/ilpo/datasets/greatesthit/vis-data-256_h264_video_21.5fps_256side_22050hz_aac_len_5_splitby_random"
-    )
-    output_dir.mkdir(exist_ok=True, parents=True)
+    videos = list(Path("/home/ilpo/repos/Diff-Foley/diff_foley_samples").glob("*.mp4"))
 
-    reencode_videos_in_parallel(videos, output_dir)
+    output_dir = Path("/home/ilpo/repos/Diff-Foley/diff_foley_samples/cut")
+    with open("data/metadata/vggsound_sparse.csv", "r") as f:
+        reader = csv.reader(f)
+        next(reader)
+        metadata = {row[0]: row[1] for row in reader}
+
+    for video in videos:
+        cut_video(
+            video.as_posix(),
+            float(metadata[video.stem]),  # start time
+            2.56,  # end time
+            (output_dir / video.name).as_posix(),
+        )

@@ -1,5 +1,7 @@
 import argparse
 import typing as tp
+from pathlib import Path
+from datetime import datetime
 
 from omegaconf import OmegaConf
 
@@ -21,14 +23,12 @@ def get_args():
         "--plot_dir",
         "-pd",
         type=str,
-        default=".",
         help="Directory where to save the evaluation plots.",
     )
     parser.add_argument(
         "--table_dir",
         "-td",
         type=str,
-        default=".",
         help="Directory where to save the evaluation result tables.",
     )
     return parser.parse_args()
@@ -42,20 +42,20 @@ def print_pipeline_cfg(pipeline_cfg_file: tp.List[str]):
 
 def get_calculated_evaluation_metrics(
     evaluation_cfg: EvaluationCfg, force_recalculate: bool = False
-) -> "EvaluationMetrics":
+) -> Path:
     print(
         f"Evaluating ({evaluation_cfg.id}):", evaluation_cfg.sample_directory.as_posix()
     )
     evaluation_metrics = EvaluationMetrics(evaluation_cfg)
     assert type(evaluation_metrics) == EvaluationMetrics
     evaluation_metrics.run_all(force_recalculate)
-    evaluation_metrics.export_results()
     print("Evaluation done\n")
-    return evaluation_metrics
+    return evaluation_metrics.export_results()
 
 
 def main():
     args = get_args()
+    assert args.table_dir or args.plot_dir, "Please specify --table_dir or --plot_dir"
     pipeline_cfg_file = args.pipeline_cfg
     print(f"Running evaluations with pipeline configuration(s): {pipeline_cfg_file}")
     print_pipeline_cfg(pipeline_cfg_file)
@@ -68,10 +68,14 @@ def main():
         metrics = get_calculated_evaluation_metrics(eval_cfg)
         all_evaluation_metrics.append(metrics)
 
-    evaluation_metrics_combiner = EvaluationMetricsCombiner(all_evaluation_metrics)
+    evaluation_metrics_combiner = EvaluationMetricsCombiner(
+        result_file_paths=all_evaluation_metrics
+    )
     evaluation_metrics_combiner.combine()
     if args.table_dir:
-        evaluation_metrics_combiner.export_to_table(args.table_dir)
+        evaluation_metrics_combiner.export_to_table(
+            Path(args.table_dir) / f"{datetime.now().strftime('%y-%m-%dT%H-%M-%S')}.csv"
+        )
     if args.plot_dir:
         evaluation_metrics_combiner.plot(args.plot_dir)
 

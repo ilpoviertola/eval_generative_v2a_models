@@ -124,7 +124,7 @@ class EvaluationMetricsCombiner:
             ax.plot(self.all_results[metric_type][0], self.all_results[metric_type][1])
         ax.set_xlabel("Sample directory")
         ax.set_ylabel(metric_type)
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=90)
         if plot_path is not None:
             plt.savefig(plot_path, bbox_inches="tight")
             plt.close()
@@ -150,6 +150,7 @@ class EvaluationMetricsCombiner:
                 continue
             data[metric_type] = self.all_results[metric_type][1]
         df = DataFrame(data, index=self.all_results[metric_type][0])
+        df.index.name = "experiment"
 
         if table_path:
             df.to_csv(table_path, index=True)
