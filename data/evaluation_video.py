@@ -353,9 +353,12 @@ class EvaluationVideoDirectory:
         original_evaluation_video = None
         for video in self.video_variations[id]:
             if video.is_original_file:
-                if for_ground_truth and video.is_ground_truth:
-                    original_evaluation_video = video
-                    break
+                if for_ground_truth:
+                    if video.is_ground_truth:
+                        original_evaluation_video = video
+                        break
+                    else:
+                        continue
                 else:
                     original_evaluation_video = video
                     break
@@ -492,9 +495,9 @@ class EvaluationVideoDirectory:
             properties["acodec"] = acodec
         if min_side:
             properties["min_side"] = min_side
-        if ground_truth:
+        if ground_truth is not None:
             properties["is_ground_truth"] = ground_truth
-        if is_original_file:
+        if is_original_file is not None:
             properties["is_original_file"] = is_original_file
 
         for id in searched_ids:

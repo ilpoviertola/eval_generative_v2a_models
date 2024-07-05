@@ -137,6 +137,7 @@ class EvaluationMetrics:
                     f"Embeddings found in gt directory ({(self.cfg.gt_directory / pipeline.fad.embeddings_fn).as_posix()})"
                 )
             else:
+                print("Getting ground truth samples for FAD...")
                 dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
                     afps=pipeline.fad.sample_rate,
                     ground_truth=True,
@@ -154,11 +155,15 @@ class EvaluationMetrics:
                     f"Embeddings found in sample directory ({(self.cfg.sample_directory / pipeline.fad.embeddings_fn).as_posix()})"
                 )
             else:
+                print("Getting generated samples for FAD...")
                 dir_path = self.evaluation_video_dir.get_path_to_directory_with_specs(
                     afps=pipeline.fad.sample_rate,
                     ground_truth=False,
                     extract_audio=True,
                 )
+                assert (
+                    dir_path.exists()
+                ), "something went wrong with the audio extraction"
 
         if (
             pipeline.zcr is not None

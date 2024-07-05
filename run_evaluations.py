@@ -55,7 +55,10 @@ def get_calculated_evaluation_metrics(
 
 def main():
     args = get_args()
-    assert args.table_dir or args.plot_dir, "Please specify --table_dir or --plot_dir"
+    if not args.table_dir and not args.plot_dir:
+        print(
+            "WARNING: No table or plot directory specified. Results will be exported to YAML format only."
+        )
     pipeline_cfg_file = args.pipeline_cfg
     print(f"Running evaluations with pipeline configuration(s): {pipeline_cfg_file}")
     print_pipeline_cfg(pipeline_cfg_file)

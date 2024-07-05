@@ -50,10 +50,10 @@ def calculate_fad(
     )
 
     score = fad.score(
-        background_dir=sample_audios,
-        eval_dir=gt_audios,
-        background_embds_path=sample_embds_path + "/" + embeddings_fn,
-        eval_embds_path=gt_embds_path + "/" + embeddings_fn,
+        background_dir=gt_audios,
+        eval_dir=sample_audios,
+        background_embds_path=gt_embds_path + "/" + embeddings_fn,
+        eval_embds_path=sample_embds_path + "/" + embeddings_fn,
         dtype=dtype,
     )
 
