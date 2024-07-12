@@ -37,13 +37,14 @@ class EvaluationMetrics:
     def __init__(self, cfg: EvaluationCfg, inited_from_file: bool = False) -> None:
         self.cfg = cfg
         self.results: tp.Dict[str, tp.Any] = {}
+        if not inited_from_file:
+            self.clean_sample_directory()
         self.evaluation_video_dir: EvaluationVideoDirectory = (
             self._init_evaluation_video_dir()
         )
         self.metadata = self._read_metadata()
         if not inited_from_file:
             self.update_last_calculated_ts()
-            self.clean_sample_directory()
             self.resolve_directories()
 
     def _init_evaluation_video_dir(self) -> EvaluationVideoDirectory:

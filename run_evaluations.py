@@ -59,7 +59,12 @@ def main():
         print(
             "WARNING: No table or plot directory specified. Results will be exported to YAML format only."
         )
-    pipeline_cfg_file = args.pipeline_cfg
+    pipeline_cfg_file = []
+    for file in args.pipeline_cfg:
+        if Path(file).is_dir():
+            pipeline_cfg_file.extend(list(Path(file).rglob("*.yaml")))
+        else:
+            pipeline_cfg_file.append(file)
     print(f"Running evaluations with pipeline configuration(s): {pipeline_cfg_file}")
     print_pipeline_cfg(pipeline_cfg_file)
 
