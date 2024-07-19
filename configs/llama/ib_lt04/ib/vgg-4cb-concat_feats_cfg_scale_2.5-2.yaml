@@ -1,10 +1,10 @@
-id: vgg-4cb-sparse_gt
-sample_directory: /home/hdd/ilpo/datasets/vggsound/sparse_h264_video_25fps_256side_24000hz_aac_4cb_encodec
 gt_directory: /home/hdd/ilpo/datasets/vggsound/sparse_h264_video_25fps_256side_24000hz_aac
+id: vgg-4cb-concat_feats_cfg_scale_2.5
 metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
-verbose: false
 pipeline:
   # fad: {}
   imagebind_score: {device: cuda:1}
   # insync: {}
   # kld: {}
+sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-07-03T09-48-11/generated_samples_24-07-10T18-09-33
+verbose: false

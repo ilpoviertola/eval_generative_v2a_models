@@ -1,10 +1,10 @@
-id: vgg-foleygen-full_eval_pipe
-sample_directory: /home/hdd/ilpo/evaluation_data/foleygen/requested_video_outputs/new_clips
 gt_directory: /home/hdd/ilpo/datasets/vggsound/sparse_h264_video_25fps_256side_24000hz_aac
+id: vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2.5
 metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
-verbose: false
 pipeline:
   fad: {}
   imagebind_score: {}
   insync: {}
   kld: {}
+sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-07-04T18-02-24/generated_samples_24-07-10T15-05-05
+verbose: false

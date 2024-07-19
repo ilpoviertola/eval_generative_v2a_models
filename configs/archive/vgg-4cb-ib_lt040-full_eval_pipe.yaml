@@ -1,0 +1,14 @@
+id: vgg-4cb-ib_lt040-full_eval_pipe
+sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-06-06T14-56-55/generated_samples_24-06-09T22-28-47
+gt_directory: /home/hdd/ilpo/datasets/vggsound/test_h264_video_25fps_256side_24000hz_aac
+metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
+verbose: false
+pipeline:
+  avclip_score: {}
+  fad: {}
+  imagebind_score: {}
+  insync: {}
+  kld: {}
+  rhythm_similarity: {}
+  spectral_contrast_similarity: {}
+  zcr: {}

@@ -1,0 +1,6 @@
+id,imagebind_score
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_1,0.13396436333538847
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2.5,0.20708834062087106
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_3,0.21264834256070825
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_1.5,0.17124782609879166
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2,0.19392190293182393

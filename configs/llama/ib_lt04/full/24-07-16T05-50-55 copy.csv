@@ -1,0 +1,6 @@
+experiment,imagebind_score
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2:generated_samples_24-07-13T19-43-06,0.14979345457191845
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2:generated_samples_24-07-13T00-18-00,0.14917716489507118
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2:generated_samples_24-07-12T17-51-16,0.14929458884620814
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2:generated_samples_24-07-13T06-45-03,0.148633972595403
+vgg-4cb-llama-concat_feats-ib_04_filtered_validation_cfg_scale_2:generated_samples_24-07-13T13-15-36,0.15007649716820398
