@@ -31,6 +31,7 @@ def calculate_imagebind_score(
     model.to(device)
 
     running_score = 0
+    cos_sim = torch.nn.CosineSimilarity(dim=1)
     # run model inference
     for i in tqdm(
         range(0, len(all_videos), BATCH_SIZE), desc="Calculating ImageBind score"
@@ -54,18 +55,11 @@ def calculate_imagebind_score(
         with torch.no_grad():
             embeddings = model(inputs)
 
-        sim_scores = torch.softmax(
-            embeddings[ModalityType.VISION] @ embeddings[ModalityType.AUDIO].T, dim=1
+        sim_scores = cos_sim(
+            embeddings[ModalityType.VISION], embeddings[ModalityType.AUDIO]
         )
         sim_scores = sim_scores.cpu().numpy()
-
-        if get_diagonal_scores:
-            running_score += np.sum(sim_scores.diagonal())
-        else:
-            max_indices = np.argmax(sim_scores, axis=1)
-            diag_indices = np.arange(sim_scores.shape[0])
-            is_diag_max = max_indices == diag_indices
-            running_score += np.sum(is_diag_max)
+        running_score += np.sum(sim_scores)
 
     score = running_score / len(all_videos)
     if verbose:

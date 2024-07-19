@@ -110,9 +110,7 @@ def cut_video(input_file: str, start_time: float, duration: float, output_file: 
         end_time (int): End time of the segment to cut in seconds.
         output_file (str): Path to the output video file.
     """
-    cmd = (
-        f"{which_ffmpeg()} -i {input_file} -ss {start_time} -t {duration} {output_file}"
-    )
+    cmd = f"{which_ffmpeg()} -hide_banner -loglevel panic -i {input_file} -ss {start_time} -t {duration} {output_file}"
     subprocess.call(cmd.split())
 
 

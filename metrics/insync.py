@@ -86,7 +86,7 @@ def calculate_insync(
     results: Dict[str, Dict[str, Union[int, float, None]]] = {}
     batch = []
     videos = list(generated_videos_path.glob("*.mp4"))
-    insync_samples = 0
+    insync_offsets = 0
     original_video_dir = Path(samples).parts[-1]
     assert len(videos), f"No videos found in {samples}... Problems with reencoding?"
     for i, vid_path in tqdm(
@@ -140,19 +140,20 @@ def calculate_insync(
                 torch.softmax(off_logits.float(), dim=-1).detach().cpu().argmax(dim=1)
             )
             insync = off_cls == targets["offset_target"].cpu()
-            insync_samples += torch.sum(insync).item()
 
             for i, path in enumerate(batch["path"]):
+                offset_sec = round(grid[off_cls[i].item()].item(), 3)
+                insync_offsets += abs(offset_sec)
                 results[path] = {
                     "insync": insync[i].item(),
-                    "offset_sec": round(grid[off_cls[i].item()].item(), 3),
+                    "offset_sec": offset_sec,
                     "prob": None,
                 }
 
             batch = []
 
-    score = float(insync_samples / len(results))
+    score = float(insync_offsets / len(results))
     if verbose:
         print("InSync:", score)
         print("Result dict:", results)
-    return insync_samples / len(results), results
+    return score, results
