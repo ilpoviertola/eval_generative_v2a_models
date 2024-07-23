@@ -264,7 +264,8 @@ class KLDivergenceMetric(torchmetrics.Metric):
         preds: torch.Tensor,
         targets: torch.Tensor,
         sizes: torch.Tensor,
-        sample_rates: torch.Tensor,
+        sample_rates_preds: torch.Tensor,
+        sample_rates_gts: torch.Tensor,
     ) -> None:
         """Calculates running KL-Divergence loss between batches of audio
         preds (generated) and target (ground-truth)
@@ -274,10 +275,10 @@ class KLDivergenceMetric(torchmetrics.Metric):
             sizes (torch.Tensor): Actual audio sample length, of shape [B].
             sample_rates (torch.Tensor): Actual audio sample rate, of shape [B].
         """
-        assert preds.shape == targets.shape
         assert preds.size(0) > 0, "Cannot update the loss with empty tensors"
-        preds_probs = self._get_label_distribution(preds, sizes, sample_rates)
-        targets_probs = self._get_label_distribution(targets, sizes, sample_rates)
+        preds_probs = self._get_label_distribution(preds, sizes, sample_rates_preds)
+        targets_probs = self._get_label_distribution(targets, sizes, sample_rates_gts)
+        assert preds_probs.shape == targets_probs.shape
         if preds_probs is not None and targets_probs is not None:
             assert preds_probs.shape == targets_probs.shape
             kld_scores = kl_divergence(preds_probs, targets_probs)
@@ -452,7 +453,8 @@ def calculate_kld(
             batch["sample_audio"],
             batch["gt_audio"],
             sizes=torch.full((batch_size,), batch["sample_audio"].shape[-1]),
-            sample_rates=batch["sample_audio_sr"],
+            sample_rates_preds=batch["sample_audio_sr"],
+            sample_rates_gts=batch["gt_audio_sr"],
         )
 
     kld = kld_metric.compute()
