@@ -3,11 +3,15 @@ import typing as tp
 from pathlib import Path
 from datetime import datetime
 
+import torch
 from omegaconf import OmegaConf
 
 from configs.evaluation_cfg import get_evaluation_config, EvaluationCfg
 from metrics.evaluation_metrics import EvaluationMetrics
 from metrics.evaluation_metrics_combiner import EvaluationMetricsCombiner
+
+
+torch.set_float32_matmul_precision("medium")
 
 
 def get_args():
