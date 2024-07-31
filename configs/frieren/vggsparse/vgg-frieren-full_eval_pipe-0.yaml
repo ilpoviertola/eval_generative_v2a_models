@@ -1,8 +1,8 @@
 id: vgg-frieren-full_eval_pipe
 sample_directory: /home/hdd/ilpo/evaluation_data/frieren/sample_0/vggsound_sparse
 sample_afps: 16000
-gt_directory: /home/hdd/ilpo/datasets/vggsound/test_h264_video_25fps_256side_24000hz_aac
-metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_test.csv
+gt_directory: /home/hdd/ilpo/datasets/vggsound/sparse_h264_video_25fps_256side_24000hz_aac
+metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
 verbose: false
 pipeline:
   fad: {}
