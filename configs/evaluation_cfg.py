@@ -22,7 +22,17 @@ class FADCfg:
     def __post_init__(self):
         # TODO: checking
         if self.embeddings_fn is None:
-            self.embeddings_fn = f"{self.model_name}_embeddings.npy"
+            if self.model_name == "vggish":
+                self.embeddings_fn = f"{self.model_name}"
+                if self.use_pca:
+                    self.embeddings_fn += "_pca"
+                if self.use_activation:
+                    self.embeddings_fn += "_activation"
+                self.embeddings_fn += f"_embeddings.npy"
+            else:
+                self.embeddings_fn = (
+                    f"{self.model_name}_{self.sample_rate}_embeddings.npy"
+                )
 
 
 @dataclass
