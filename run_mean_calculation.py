@@ -2,6 +2,8 @@ from pathlib import Path
 import csv
 import argparse
 
+from metrics.evaluation_metrics import EvaluationMetrics
+
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -66,8 +68,7 @@ def main():
     # Save the calculated mean of evaluation metrics
     output_path = Path(args.output)
     output_path.mkdir(parents=True, exist_ok=True)
-    tables = [Path(table).stem for table in args.table]
-    filename = output_path / f"{'_'.join(tables)}.csv"
+    filename = output_path / f"{EvaluationMetrics._get_current_timestamp()}.csv"
     with open(filename, "w") as f:
         writer = csv.writer(f)
         header = ["id"]
