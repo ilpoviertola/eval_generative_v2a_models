@@ -5,7 +5,7 @@ import numpy as np
 import librosa
 from tqdm import tqdm
 
-from eval_utils.dataset import AudioDataset
+from eval_utils.dataset import AudioWithGtDataset
 from torch.utils.data import DataLoader
 
 
@@ -18,7 +18,7 @@ def calculate_rhythm_similarity(
     duration: float = 2.56,
     apply_metadata_to_samples: bool = False,
 ) -> float:
-    dataset = AudioDataset(
+    dataset = AudioWithGtDataset(
         samples_dir, gt_dir, duration, metadata, apply_metadata_to_samples
     )
     loader = DataLoader(dataset, batch_size=1, num_workers=1, shuffle=False)

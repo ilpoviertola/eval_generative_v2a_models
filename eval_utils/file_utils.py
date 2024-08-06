@@ -110,7 +110,7 @@ def cut_video(input_file: str, start_time: float, duration: float, output_file: 
         end_time (int): End time of the segment to cut in seconds.
         output_file (str): Path to the output video file.
     """
-    cmd = f"{which_ffmpeg()} -hide_banner -loglevel panic -i {input_file} -ss {start_time} -t {duration} {output_file}"
+    cmd = f"{which_ffmpeg()} -hide_banner -loglevel panic -y -i {input_file} -ss {start_time} -t {duration} {output_file}"
     subprocess.call(cmd.split())
 
 
@@ -455,19 +455,34 @@ def reencode_videos_in_parallel(
 
 if __name__ == "__main__":
     import csv
+    import shutil
 
-    videos = list(Path("/home/ilpo/repos/Diff-Foley/diff_foley_samples").glob("*.mp4"))
-
-    output_dir = Path("/home/ilpo/repos/Diff-Foley/diff_foley_samples/cut")
-    with open("data/metadata/vggsound_sparse.csv", "r") as f:
-        reader = csv.reader(f)
-        next(reader)
-        metadata = {row[0]: row[1] for row in reader}
-
-    for video in videos:
-        cut_video(
-            video.as_posix(),
-            float(metadata[video.stem]),  # start time
-            2.56,  # end time
-            (output_dir / video.name).as_posix(),
+    for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
+        videos = list(
+            Path(
+                f"/home/hdd/ilpo/evaluation_data/frieren/sample_{i}/vggsound_sparse"
+            ).glob("*.mp4")
         )
+
+        output_dir = Path(
+            f"/home/hdd/ilpo/evaluation_data/frieren/sample_{i}/vggsound_sparse/clipped"
+        )
+        output_dir.mkdir(exist_ok=True)
+
+        with open("data/metadata/vggsound_sparse.csv", "r") as f:
+            reader = csv.reader(f)
+            next(reader)
+            metadata = {row[0]: row[1] for row in reader}
+
+        for video in tqdm(videos, total=len(videos), desc="Cutting videos"):
+            shutil.copy(
+                video.resolve(),
+                (output_dir / f"{video.stem}.tmp{video.suffix}").resolve(),
+            )
+            cut_video(
+                (output_dir / f"{video.stem}.tmp{video.suffix}").as_posix(),
+                float(metadata[video.stem]),  # start time
+                2.56,  # end time
+                (output_dir / video.name).as_posix(),
+            )
+            Path(output_dir / f"{video.stem}.tmp{video.suffix}").unlink()

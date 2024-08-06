@@ -26,7 +26,7 @@ from hear21passt.models.helpers.vit_helpers import update_default_cfg_and_kwargs
 from timm.models.helpers import load_pretrained
 
 from eval_utils.file_utils import convert_audio, extract_audios_from_video_dir_if_needed
-from eval_utils.dataset import AudioDataset
+from eval_utils.dataset import AudioWithGtDataset
 
 logger = logging.getLogger(__name__)
 
@@ -438,7 +438,7 @@ def calculate_kld(
         Path(audio_samples_dir)
     )
     audio_gts_dir, _ = extract_audios_from_video_dir_if_needed(Path(audio_gts_dir))
-    dataset = AudioDataset(
+    dataset = AudioWithGtDataset(
         audio_samples_dir=audio_samples_dir,
         audio_gts_dir=audio_gts_dir,
         duration=duration,
