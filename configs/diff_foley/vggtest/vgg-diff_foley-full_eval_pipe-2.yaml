@@ -1,5 +1,5 @@
 id: vgg-diff-foley-full_eval_pipe
-sample_directory: /home/hdd/ilpo/evaluation_data/vggtest/diff-foley/sample_2
+sample_directory: /home/hdd/ilpo/evaluation_data/diff-foley/vggtest/sample_2
 sample_afps: 16000
 gt_directory: /home/hdd/ilpo/datasets/vggsound/test_h264_video_25fps_256side_24000hz_aac
 metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_test.csv

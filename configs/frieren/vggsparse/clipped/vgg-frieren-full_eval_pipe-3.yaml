@@ -5,7 +5,7 @@ gt_directory: /home/hdd/ilpo/datasets/vggsound/sparse_h264_video_25fps_256side_4
 metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
 verbose: false
 pipeline:
-  fad: {}
+  fad: {model_name: pann}
   # imagebind_score: {}
   # insync: {}
   # kld: {}

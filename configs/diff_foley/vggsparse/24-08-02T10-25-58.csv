@@ -1,0 +1,5 @@
+experiment,fad
+vgg-diff_foley-full_eval_pipe:sample_2,0.0015528375720772203
+vgg-diff_foley-full_eval_pipe:sample_1,0.001459241691501495
+vgg-diff_foley-full_eval_pipe:sample_3,0.001370073410745798
+vgg-diff_foley-full_eval_pipe:sample_0,0.0017216347641378638

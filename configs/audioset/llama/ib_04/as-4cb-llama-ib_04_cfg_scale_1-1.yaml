@@ -1,0 +1,10 @@
+gt_directory: /home/hdd/ilpo/datasets/vggsound/sparse_h264_video_25fps_256side_24000hz_aac
+id: as-4cb-llama-ib_04_cfg_scale_1
+metadata: /home/ilpo/repos/eval_generative_audio_models/data/metadata/vggsound_sparse.csv
+pipeline:
+  fad: {}
+  imagebind_score: {}
+  insync: {}
+  kld: {}
+sample_directory: /home/hdd/ilpo/checkpoints/synchronisonix/24-07-27T13-19-35/generated_samples_24-08-01T00-32-28
+verbose: false
